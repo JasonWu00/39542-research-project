@@ -9,7 +9,7 @@ URL: -
 
 import pandas as pd
 
-def import_data(csv_name, columns_to_use):
+def import_housing(csv_name, columns_to_use):
     """
     This function takes two inputs:
     csv_name: the name of a .csv file to read.
@@ -70,6 +70,7 @@ def impute_housing(df):
     The following columns will be added to the DataFrame:
     Project Start Year: year project starts
     Project End Year: year project ends
+    Percent: All Counted Units / Total Units
 
     The imputing will be done "manually" (unique code for every column).
     This is bad coding form, but circumstances make a more "elegant" solution difficult.
@@ -109,7 +110,7 @@ def main():
                         "All Counted Units", "Total Units"]
     # print("Before import")
     # print(desired_columns)
-    df_housing = import_data("Affordable_Housing_Production_by_Building.csv", desired_columns)
+    df_housing = import_housing("Affordable_Housing_Production_by_Building.csv", desired_columns)
 
     # saving intermediate work to .csv files
     # to skip earlier work in later sections
