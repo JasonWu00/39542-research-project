@@ -260,12 +260,17 @@ def clean_store_income_data():
     df_zip_income = import_income("NYC_income_by_zip_2021_untransposed.csv")
     df_zip_income.to_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv", index=True)
 
+def placeholder():
+    """
+    Docstring
+    """
+
 def main():
     """
     main function
     """
     # clean_store_ahs_data()
-    clean_store_income_data()
+    # clean_store_income_data()
 
 if __name__ == "__main__":
     main()
