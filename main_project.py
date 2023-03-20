@@ -135,59 +135,129 @@ def strip_letters(index):
     for char in index:
         if "0" <= char <= "9":
             output += char
+    # Removes a stray 5 that slips into output
     return output[1:]
+
+def strip_punctuation(value):
+    """
+    This function takes one input:
+    value: a number-like in a DataFrame
+
+    Returns a version of value without any percent signs.
+
+    Example:
+    input: '22.5%'
+    Returns: '22.5'
+    """
+    if pd.isna(value) or not isinstance(value, str):
+        return value
+    output = ""
+
+    for char in value:
+        if ("0" <= char <= "9") or char == ".":
+            output += char
+
+    if output == "":
+        output = "0"
+    return output
+
+def impute_income(df):
+    """
+    This function takes one inputs:
+    df: a DataFrame object containing Income by ZIP code data.
+
+    The following changes occur to the DataFrame:
+
+    Returns the imputed DataFrame.
+    """
+    # drop undesired columns
+    drop_idx_list = []
+    for idx in df.index:
+        if "!!Households!!" not in idx:
+            drop_idx_list.append(idx)
+    df.drop(index=drop_idx_list, inplace=True)
+
+    # rename indices
+    rename_index_dict = {}
+    for idx in df.index:
+        if idx == "New York city, New York!!Households!!Estimate":
+            rename_index_dict[idx] = "00000"
+        else:
+            rename_index_dict[idx] = strip_letters(idx)
+    df.rename(index=rename_index_dict, inplace=True)
+
+    # rename columns
+    rename_column_dict = {}
+    for col in df.columns:
+        rename_column_dict[col] = col.strip()
+    df.rename(columns=rename_column_dict, inplace=True)
+
+    # drop useless columns
+    columns_to_drop = ["PERCENT ALLOCATED", "Family income in the past 12 months",\
+                       "Nonfamily income in the past 12 months"]
+    df.drop(columns=columns_to_drop, inplace=True)
+
+    df.index.name = "Zipcode"
+
+    # convert 'object' dtypes to 'int' or 'float'
+    # also discard zips that contain no residents
+    for col in df.columns:
+        df[col] = df[col].apply(strip_punctuation)
+        df = df[df["Total"] != 0]
+
+        if col in ["Zipcode", "Total", "Median income (dollars)", "Mean income (dollars)"]:
+            df[col] = df[col].astype(int)
+        else:
+            df[col] = df[col].astype(float)
+
+    return df[df["Total"] != 0]
 
 def import_income(csv_name):
     """
     This function takes one input:
     csv_name: the name of a .csv file to read.
 
-    The data in the .csv file is read into a DataFrame.
+    The data in the .csv file is read into a DataFrame and then transposed.
     The DataFrame undergoes the following changes:
     - Rotate 90 degrees
     - Rename indices and columns for easier reading
     - Drop some useless columns
+    - Drop all ZIP rows that have a population of 0.
 
-    Returns the modified DataFrame.
+    Returns an imputed version of the modified DataFrame.
     """
     df_zip_income = pd.read_csv(csv_name, index_col=[0])
     #print(df_zip_income)
     # for column_label in df_zip_income:
     #     print("Printing a column label")
     #     print(column_label)
-    df_zip_income_transposed = df_zip_income.transpose()
-    #print(df_zip_income_transposed)
+    df_zip_income = df_zip_income.transpose()
+    #print(df_zip_income)
 
-    # rename indices
-    rename_index_dict = {}
-    for idx in df_zip_income_transposed.index:
-        if idx == "New York city, New York!!Households!!Estimate":
-            rename_index_dict[idx] = "NYC"
-        else:
-            rename_index_dict[idx] = strip_letters(idx)
-    df_zip_income_transposed.rename(index=rename_index_dict, inplace=True)
-
-    # rename columns
-    rename_column_dict = {}
-    for col in df_zip_income_transposed.columns:
-        rename_column_dict[col] = col.strip()
-    df_zip_income_transposed.rename(columns=rename_column_dict, inplace=True)
-
-    # drop useless columns
-    # print(df_zip_income_transposed)
-    # print(df_zip_income_transposed.columns)
-    columns_to_drop = ["PERCENT ALLOCATED", "Family income in the past 12 months",\
-                       "Nonfamily income in the past 12 months"]
-    df_zip_income_transposed.drop(columns=columns_to_drop, inplace=True)
-
-    df_zip_income_transposed.index.name = "Zipcode"
-    return df_zip_income_transposed
+    return impute_income(df_zip_income)
 
 def clean_store_income_data():
     """
     Step 2: clean up the 2021 Income by ZIP data and save it to a csv file.
+
+    The "truncated" csv file was manually produced by me going to the US Census website
+    and manually de-selecting a bunch of rows using the UI there before downloading as csv.
+    The reason for this is as follows:
+
+    The column names are formatted really weirdly.\n
+    An example column name: `New York city, New York!!Households!!Estimate`.\n
+    The system that the US Census website uses to represent nested column indices
+    appears to use `!!` to denote 'nest one layer deeper'.
+
+    I decided that 1) trying to wrangle this into a proper multi-index dataframe
+    would be too much trouble and that 2) I can drop a bunch of columns that I can
+    afford to not take into consideration and make the df effectively single-index.
+
+    To this end I dropped the 'Estimates' sub-sub-column of the
+    'Families', 'Married-couple Families', and 'Nonfamily Households' sub-columns
+    of every zip code, retaining only 'Households'->'Estimates' per zip code.
     """
-    df_zip_income = import_income("NYC_income_by_zip_2021_untransposed_truncated.csv")
+    df_zip_income = import_income("NYC_income_by_zip_2021_untransposed.csv")
     df_zip_income.to_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv", index=True)
 
 def main():
