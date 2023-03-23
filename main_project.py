@@ -5,22 +5,30 @@ Resources:
 Pandas documentation for all manner of debugging help
 Title: -
 URL: -
+
+I will be using this space to put down some notes about my coding decisions.
+
+Some of the functions store data into .csv files.
+This is so that I do not have to clean the data all over again
+and can instead start with some of the work already done.
+You can un-comment all of the functions calls in main()
+to do everything from start to finish in one go.
 """
 
 import pandas as pd
 
-def import_housing(csv_name, columns_to_use):
+def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
     This function takes two inputs:
     csv_name: the name of a .csv file to read.
     columns_to_use: a list of columns to keep.
 
-    The data in the .csv file is read into a DataFrame.
-    If a valid list of columns is provided, only those columns will be kept.
+    The data in the .csv file is read into a DataFrame.\n
+    If a valid list of columns is provided, only those columns will be kept.\n
+    The DataFrame is then passed to impute_housing().
 
     Returns an imputed version of the DataFrame.
     """
-    df = None
     df = pd.read_csv(csv_name)
     if columns_to_use != []:
         df = df[columns_to_use]
@@ -45,7 +53,7 @@ def choose_postcode(postcode, boro):
     postcode: a potentially NaN zip code.
     boro: a non-NaN string containing a borough.
 
-    Returns postcode if it is not empty, or the ZIP corresponding to boro otherwise.
+    Returns postcode if it is not empty, or the ZIP corresponding to boro otherwise.\n
     Based on impute_zip() in Assignment 4.
     """
     #print("Choosing postcode or boro")
@@ -58,7 +66,7 @@ def choose_postcode(postcode, boro):
         return boro_dict[boro]
     return postcode
 
-def impute_housing(df):
+def impute_housing(df: pd.DataFrame)->pd.DataFrame:
     """
     This function takes one inputs:
     df: a DataFrame object containing Affordable Housing Unit data.
@@ -72,7 +80,7 @@ def impute_housing(df):
     Project End Year: year project ends
     Percent: All Counted Units / Total Units
 
-    The imputing will be done "manually" (unique code for every column).
+    The imputing will be done "manually" (unique code for every column).\n
     This is bad coding form, but circumstances make a more "elegant" solution difficult.
 
     Returns the imputed DataFrame.
@@ -94,7 +102,8 @@ def impute_housing(df):
 
     df["Percent"] = 0.0
     df["Percent"] = df["All Counted Units"] / df["Total Units"]
-    df["Percent"] = df["Percent"].apply(lambda percent: int(percent*100))
+    # 3 places after the decimal should be enough precision here
+    df["Percent"] = df["Percent"].apply(lambda percent: round(percent, 3))
     return df
 
 def clean_store_ahs_data():
@@ -106,8 +115,8 @@ def clean_store_ahs_data():
                         "NTA - Neighborhood Tabulation Area",\
                         "Building Completion Date", "Reporting Construction Type",\
                         "Extended Affordability Only", "Extremely Low Income Units",\
-                        "Very Low Income Units", "Low Income Units", "Middle Income Units",\
-                        "All Counted Units", "Total Units"]
+                        "Very Low Income Units", "Low Income Units", "Moderate Income Units",\
+                        "Middle Income Units", "All Counted Units", "Total Units"]
     # print("Before import")
     # print(desired_columns)
     df_housing = import_housing("Affordable_Housing_Production_by_Building.csv", desired_columns)
@@ -117,10 +126,10 @@ def clean_store_ahs_data():
     # to do everything in one go, cmment out all save lines
     df_housing.to_csv("AHP_by_Building_cleaned.csv", index=False)
 
-    #df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
-    print(df_housing)
+    # df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
+    # print(df_housing)
 
-def strip_letters(index):
+def strip_letters(index: str)->str:
     """
     This function takes one input:
     index: a string for a DataFrame index.
@@ -138,10 +147,10 @@ def strip_letters(index):
     # Removes a stray 5 that slips into output
     return output[1:]
 
-def strip_punctuation(value):
+def strip_punctuation(value: str)->str:
     """
     This function takes one input:
-    value: a number-like in a DataFrame
+    value: a number-like value from a DataFrame
 
     Returns a version of value without any percent signs.
 
@@ -161,12 +170,34 @@ def strip_punctuation(value):
         output = "0"
     return output
 
-def impute_income(df):
+def strip_quotations(column: str)->str:
+    """
+    This function takes one input:
+    column: a column name from a DataFrame
+
+    Returns a version of column without quotations.
+    """
+    if pd.isna(column) or not isinstance(column, str):
+        return column
+    output = ""
+
+    for char in column:
+        if char != "\"":
+            output += char
+    return output
+
+def impute_income(df: pd.DataFrame)->pd.DataFrame:
     """
     This function takes one inputs:
     df: a DataFrame object containing Income by ZIP code data.
 
-    The following changes occur to the DataFrame:
+    The DataFrame undergoes the following changes:
+    - Remove all columns that isn't an estimate of number of households
+    - Rename columns to a more readable format
+    - Drop some columns that contain no useful data
+    - Set index name to "Zipcode"
+    - Convert columns with dtype "object" to "int" or "float" when appropriate
+    - Discard rows with a "Total" value of 0
 
     Returns the imputed DataFrame.
     """
@@ -189,7 +220,7 @@ def impute_income(df):
     # rename columns
     rename_column_dict = {}
     for col in df.columns:
-        rename_column_dict[col] = col.strip()
+        rename_column_dict[col] = strip_quotations(col.strip())
     df.rename(columns=rename_column_dict, inplace=True)
 
     # drop useless columns
@@ -210,19 +241,32 @@ def impute_income(df):
         else:
             df[col] = df[col].astype(float)
 
-    return df[df["Total"] != 0]
+    # a more descriptive column name
+    df.rename(columns={"Total": "Total Households"}, inplace=True)
 
-def import_income(csv_name):
+    # turning the percent columns into easier to work with decimals between 0 and 1
+    rescale_column_list = ["Less than $10,000",
+                           "$10,000 to $14,999",
+                           "$15,000 to $24,999",
+                           "$25,000 to $34,999",
+                           "$35,000 to $49,999",
+                           "$50,000 to $74,999",
+                           "$75,000 to $99,999",
+                           "$100,000 to $149,999",
+                           "$150,000 to $199,999",
+                           "$200,000 or more"]
+    for col in rescale_column_list:
+        df[col] = df[col].apply(lambda percent: round(percent/100, 3))
+
+    return df[df["Total Households"] != 0]
+
+def import_income(csv_name: str)->pd.DataFrame:
     """
     This function takes one input:
     csv_name: the name of a .csv file to read.
 
-    The data in the .csv file is read into a DataFrame and then transposed.
-    The DataFrame undergoes the following changes:
-    - Rotate 90 degrees
-    - Rename indices and columns for easier reading
-    - Drop some useless columns
-    - Drop all ZIP rows that have a population of 0.
+    The data in the .csv file is read into a DataFrame and then transposed.\n
+    The DataFrame is then passed to impute_income().
 
     Returns an imputed version of the modified DataFrame.
     """
@@ -239,23 +283,6 @@ def import_income(csv_name):
 def clean_store_income_data():
     """
     Step 2: clean up the 2021 Income by ZIP data and save it to a csv file.
-
-    The "truncated" csv file was manually produced by me going to the US Census website
-    and manually de-selecting a bunch of rows using the UI there before downloading as csv.
-    The reason for this is as follows:
-
-    The column names are formatted really weirdly.\n
-    An example column name: `New York city, New York!!Households!!Estimate`.\n
-    The system that the US Census website uses to represent nested column indices
-    appears to use `!!` to denote 'nest one layer deeper'.
-
-    I decided that 1) trying to wrangle this into a proper multi-index dataframe
-    would be too much trouble and that 2) I can drop a bunch of columns that I can
-    afford to not take into consideration and make the df effectively single-index.
-
-    To this end I dropped the 'Estimates' sub-sub-column of the
-    'Families', 'Married-couple Families', and 'Nonfamily Households' sub-columns
-    of every zip code, retaining only 'Households'->'Estimates' per zip code.
     """
     df_zip_income = import_income("NYC_income_by_zip_2021_untransposed.csv")
     df_zip_income.to_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv", index=True)
@@ -265,12 +292,146 @@ def placeholder():
     Docstring
     """
 
+def add_data_to_income():
+    """
+    Step 3: add to the Income by ZIP csv columns of possibly useful data.
+
+    The data produced by Steps 1 and 2 are loaded into DataFrames.\n
+    The Income by ZIP DataFrame gains the following columns:
+    - Total Affordable Housing: number of affordable housing units present in each zip code.
+    - Affordable Housing Percent: affordable housing available divided by household count.
+    """
+    df_zip_income = pd.read_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv")
+    df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
+
+    def extract_housing_sum(zipcode: int)->int:
+        """
+        An internal function to do some math.\n
+        This workaround avoids a "Can only compare identically labeled Series objects"
+        value error that appears if you try to run the commented out code.
+
+        I chose to define this function inside of add_data_to_income() because
+        this function needs access to df_housing and I would much rather not pass
+        df_housing to it every time it gets called (and take up unnecessary memory).
+        """
+        return df_housing[df_housing["Postcode"] == zipcode]["All Counted Units"].sum()
+
+    def convert_percent_to_raw(zipcode: int, percent_bracket_name: str)->int:
+        """
+        Another internal function.
+        This function hopes to derive an approximate number for the number of people who fall
+        into one of the % based income brackets in the AHP csv.
+
+        The math goes as follows:
+        - Take in a zipcode and the name of a percent income bracket.
+        - Identify that zip's median and the percent value correlating to the bracket name.
+            - Example: "Extremely Low Income Units" will return a value of 0.3.
+        - Multiply the two to get an `upper raw income limit` for that percent bracket for that zip.
+        - Iterate through each raw income bracket for that zip from lowest to highest.
+        - For each column, derive the `max income` of its bracket.
+            - Example: "$10000 to $14999" will return a max of 15000.
+        - See if the raw income bracket partially or fully falls below `upper raw income limit`.
+            - If it fully falls under limit: += the entire bracket population to an output value.
+            - If it partially falls under limit: += household count * (`raw limit` / `max income`).
+            - End the loop by then, since all remaining brackets will not fall under the limit.
+        - Return the output value.
+
+        Example: given a ZIP of 12345 and a percent bracket of "Extremely Low Income Units",
+        return a value that says "this many people in this zip qualify for Extremely Low category".
+        """
+        percent_income_dict = {"Extremely Low Income Units":0.3,
+                               "Very Low Income Units":0.5,
+                               "Low Income Units":0.8,
+                               "Moderate Income Units":1.2,
+                               "Middle Income Units":1.65}
+        max_income_dict = {"Less than $10,000":10000,
+                               "$10,000 to $14,999":15000,
+                               "$15,000 to $24,999":25000,
+                               "$25,000 to $34,999":35000,
+                               "$35,000 to $49,999":50000,
+                               "$50,000 to $74,999":75000,
+                               "$75,000 to $99,999":100000,
+                               "$100,000 to $149,999":150000,
+                               "$150,000 to $199,999":200000,
+                               "$200,000 or more":500000}
+        # Chain indexing returns a Series of 1 thing, so the iloc is necessary
+        median = (df_zip_income[df_zip_income["Zipcode"] == zipcode]\
+                  ["Median income (dollars)"]).iloc[0]
+        percent_multiplier = percent_income_dict[percent_bracket_name]
+        upper_raw_income = median * percent_multiplier
+        output = 0
+        total_households = (df_zip_income[df_zip_income["Zipcode"] == zipcode]\
+                            ["Total Households"]).iloc[0]
+
+        # This system is imperfect as it over-counts people from lower brackets.
+        # This will be fixed outside this inner function.
+        for column in max_income_dict.keys():
+            household_percent = df_zip_income[df_zip_income["Zipcode"] == zipcode][column].iloc[0]
+            if max_income_dict[column] < upper_raw_income:
+                output += int(household_percent * total_households)
+            else:
+                portion = total_households * (upper_raw_income / max_income_dict[column])
+                output += int(household_percent * portion)
+                break
+        return output
+
+    df_zip_income["Total Affordable Housing"] = df_zip_income["Zipcode"].apply(extract_housing_sum)
+    df_zip_income["Housing to Households Ratio"] =\
+        df_zip_income["Total Affordable Housing"] / df_zip_income["Total Households"]
+
+    # "Can only compare identically labeled Series objects" error appears if you run this:
+    # df_zip_income["Total Affordable Housing"] = \
+    #     df_housing[df_housing["Postcode"] == df_zip_income["Zipcode"]]\
+    #         ["All Counted Units"].sum()
+
+    new_column_names = {"Extremely Low Income Units":"Extremely Low Income Households",
+                        "Very Low Income Units":"Very Low Income Households",
+                        "Low Income Units":"Low Income Households",
+                        "Moderate Income Units":"Moderate Income Households",
+                        "Middle Income Units":"Middle Income Households"}
+    for column in new_column_names.keys():
+        df_zip_income[new_column_names[column]] =\
+            df_zip_income["Zipcode"].apply(\
+            lambda zipcode: convert_percent_to_raw(zipcode,column))
+
+    df_zip_income["Middle Income Households"] -= df_zip_income["Moderate Income Households"]
+    df_zip_income["Moderate Income Households"] -= df_zip_income["Low Income Households"]
+    df_zip_income["Low Income Households"] -= df_zip_income["Very Low Income Households"]
+    df_zip_income["Very Low Income Households"] -= df_zip_income["Extremely Low Income Households"]
+
+    print(df_zip_income)
+    df_zip_income.to_csv("NYC_Income_by_ZIP_Expanded.csv", index=False)
+
 def main():
     """
-    main function
+    Main function.
+    Each function call below correlates to a "step" of this project.
+
+    Plans for next steps:
+    For every zip in income data:
+    scour through ahs data to find all rows of buildings available by 2021
+    defined as (end date before 2021)
+
+    using these rows, derive these data:
+    - number of affordable housing units available
+    - ratio of affordable housing units divided by total households
+    - number of people
+    - estimated number of households falling into various income brackets
+        - "extremely low income", "very low income", "low income", "moderate income"...
+    - ratio for each of these income brackets
+
+    insert this data into new rows of the income data df
+    save this df to a new csv file
+
+    figure out what to predict (x and y values)
+    possible x and y values (for a given zip, or for all of NYC):
+    - x: number of in-need households
+    - y: number of affordable housing
+    figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
-    # clean_store_ahs_data()
-    # clean_store_income_data()
+    #clean_store_ahs_data()
+    #clean_store_income_data()
+    add_data_to_income()
 
 if __name__ == "__main__":
     main()
