@@ -31,6 +31,7 @@ def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
 
     Returns an imputed version of the DataFrame.
     """
+    print("Beginning step 1: importing housing data")
     df = pd.read_csv(csv_name)
     if columns_to_use != []:
         df = df[columns_to_use]
