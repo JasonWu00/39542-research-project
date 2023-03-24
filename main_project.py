@@ -399,6 +399,8 @@ def add_data_to_income():
             (lambda zipcode: extract_housing_sum(zipcode,"All Counted Units"))
     df_zip_income["Housing to Households Ratio"] =\
         df_zip_income["Total Affordable Housing"] / df_zip_income["Total Households"]
+    df_zip_income["Housing to Households Ratio"] = \
+        df_zip_income["Housing to Households Ratio"].apply(lambda ratio: round(ratio, 3))
 
     # "Can only compare identically labeled Series objects" error appears if you run this:
     # df_zip_income["Total Affordable Housing"] = \
@@ -466,6 +468,19 @@ def draw_graphs():
     df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
+    # scatter plot: area median income vs. Housing to Households Ratio
+    xcol = df_zip_income[df_zip_income["Housing to Households Ratio"] > 0]\
+                        ["Median income (dollars)"]
+    ycol = df_zip_income[df_zip_income["Housing to Households Ratio"] > 0]\
+                        ["Housing to Households Ratio"]
+    plt.scatter(xcol,
+                ycol,
+                c="Blue")
+    plt.title("Area income and housing availability, by ZIP")
+    plt.xlabel("Median income (US Dollars)")
+    plt.ylabel("Housing to Household Ratio")
+    plt.show()
+
 def main():
     """
     Main function.
@@ -496,6 +511,8 @@ def main():
     # clean_store_ahs_data()
     # clean_store_income_data()
     # add_data_to_income()
+    draw_graphs()
+    print("We are in the main function")
 
 if __name__ == "__main__":
     main()
