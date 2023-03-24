@@ -31,7 +31,6 @@ def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
 
     Returns an imputed version of the DataFrame.
     """
-    print("Beginning step 1: importing housing data")
     df = pd.read_csv(csv_name)
     if columns_to_use != []:
         df = df[columns_to_use]
@@ -113,6 +112,7 @@ def clean_store_ahs_data():
     """
     Step 1: clean up the Affordable Housing data and save it to a csv file.
     """
+    print("Beginning step 1: importing housing data")
     desired_columns = [ "Project ID", "Project Start Date", "Project Completion Date",\
                         "Borough", "Postcode", "Census Tract",\
                         "NTA - Neighborhood Tabulation Area",\
