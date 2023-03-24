@@ -465,6 +465,7 @@ def draw_graphs():
     """
     Step 4: draw stuff.
     """
+    print("Beginning Step 4: drawing graphs")
     df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
