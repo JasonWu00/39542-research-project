@@ -508,11 +508,11 @@ def main():
     - y: number of affordable housing
     figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
+    print("Beginning project steps")
     # clean_store_ahs_data()
     # clean_store_income_data()
     # add_data_to_income()
     draw_graphs()
-    print("We are in the main function")
 
 if __name__ == "__main__":
     main()
