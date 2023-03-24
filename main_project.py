@@ -16,6 +16,8 @@ to do everything from start to finish in one go.
 """
 
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
@@ -188,7 +190,7 @@ def strip_quotations(column: str)->str:
 
 def impute_income(df: pd.DataFrame)->pd.DataFrame:
     """
-    This function takes one inputs:
+    This function takes one input:
     df: a DataFrame object containing Income by ZIP code data.
 
     The DataFrame undergoes the following changes:
@@ -212,7 +214,7 @@ def impute_income(df: pd.DataFrame)->pd.DataFrame:
     rename_index_dict = {}
     for idx in df.index:
         if idx == "New York city, New York!!Households!!Estimate":
-            rename_index_dict[idx] = "00000"
+            rename_index_dict[idx] = "10000"
         else:
             rename_index_dict[idx] = strip_letters(idx)
     df.rename(index=rename_index_dict, inplace=True)
@@ -299,13 +301,23 @@ def add_data_to_income():
     The data produced by Steps 1 and 2 are loaded into DataFrames.\n
     The Income by ZIP DataFrame gains the following columns:
     - Total Affordable Housing: number of affordable housing units present in each zip code.
-    - Affordable Housing Percent: affordable housing available divided by household count.
+    - Housing to Household Ratio: assuming every affordable housing unit is occupied, [num] of
+    the population of this zip will live in an affordable housing unit.
+    - [bracket] Households: number of households that fall under a given percent based bracket
+    - [bracket] H/H ratio: percent of households in that bracket that could receive affordable
+    housing, assuming a random and fair assignment of housing to households
+
+    The DataFrame is then saved to a new .csv file.
     """
     df_zip_income = pd.read_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
-    def extract_housing_sum(zipcode: int)->int:
+    def extract_housing_sum(zipcode: int, unit_type: str)->int:
         """
+        This function takes two inputs:
+        zipcode: a zip code.
+        unit_type: name of a DataFrame column corresponding to a type of affordable housing.
+
         An internal function to do some math.\n
         This workaround avoids a "Can only compare identically labeled Series objects"
         value error that appears if you try to run the commented out code.
@@ -314,10 +326,14 @@ def add_data_to_income():
         this function needs access to df_housing and I would much rather not pass
         df_housing to it every time it gets called (and take up unnecessary memory).
         """
-        return df_housing[df_housing["Postcode"] == zipcode]["All Counted Units"].sum()
+        return df_housing[df_housing["Postcode"] == zipcode][unit_type].sum()
 
     def convert_percent_to_raw(zipcode: int, percent_bracket_name: str)->int:
         """
+        This function takes two inputs:
+        zipcode: a zip code.
+        percent_bracket_name: DataFrame column name corresponding to a type of affordable housing.
+
         Another internal function.
         This function hopes to derive an approximate number for the number of people who fall
         into one of the % based income brackets in the AHP csv.
@@ -337,7 +353,7 @@ def add_data_to_income():
         - Return the output value.
 
         Example: given a ZIP of 12345 and a percent bracket of "Extremely Low Income Units",
-        return a value that says "this many people in this zip qualify for Extremely Low category".
+        return a value that denotes "this many people in this zip qualify for Extremely Low category".
         """
         percent_income_dict = {"Extremely Low Income Units":0.3,
                                "Very Low Income Units":0.5,
@@ -365,17 +381,22 @@ def add_data_to_income():
 
         # This system is imperfect as it over-counts people from lower brackets.
         # This will be fixed outside this inner function.
-        for column in max_income_dict.keys():
-            household_percent = df_zip_income[df_zip_income["Zipcode"] == zipcode][column].iloc[0]
-            if max_income_dict[column] < upper_raw_income:
+        for col in max_income_dict.items():
+            household_percent = df_zip_income[df_zip_income["Zipcode"] == zipcode][col[0]].iloc[0]
+            if col[1] < upper_raw_income:
                 output += int(household_percent * total_households)
             else:
-                portion = total_households * (upper_raw_income / max_income_dict[column])
+                portion = total_households * (upper_raw_income / col[1])
                 output += int(household_percent * portion)
                 break
         return output
 
-    df_zip_income["Total Affordable Housing"] = df_zip_income["Zipcode"].apply(extract_housing_sum)
+    # ============================================================================================
+    # Helpers end here, actual coding begins here
+
+    df_zip_income["Total Affordable Housing"] = \
+        df_zip_income["Zipcode"].apply\
+            (lambda zipcode: extract_housing_sum(zipcode,"All Counted Units"))
     df_zip_income["Housing to Households Ratio"] =\
         df_zip_income["Total Affordable Housing"] / df_zip_income["Total Households"]
 
@@ -389,18 +410,61 @@ def add_data_to_income():
                         "Low Income Units":"Low Income Households",
                         "Moderate Income Units":"Moderate Income Households",
                         "Middle Income Units":"Middle Income Households"}
-    for column in new_column_names.keys():
-        df_zip_income[new_column_names[column]] =\
-            df_zip_income["Zipcode"].apply(\
-            lambda zipcode: convert_percent_to_raw(zipcode,column))
+    for col in new_column_names.items():
+        df_zip_income[col[1]] =\
+            df_zip_income["Zipcode"].apply\
+                (lambda zipcode: convert_percent_to_raw(zipcode,col[0]))
 
+    # convert_percent_to_raw() overcounts households for 4 of the 5 percent brackets
+    # this subtracts the over-counted households to yield more accurate household counts
     df_zip_income["Middle Income Households"] -= df_zip_income["Moderate Income Households"]
     df_zip_income["Moderate Income Households"] -= df_zip_income["Low Income Households"]
     df_zip_income["Low Income Households"] -= df_zip_income["Very Low Income Households"]
     df_zip_income["Very Low Income Households"] -= df_zip_income["Extremely Low Income Households"]
 
+    # Adding columns of "total number of housing for this bracket"
+    housing_column_names = {"Extremely Low Income Units":"Extremely Low Housing",
+                            "Very Low Income Units":"Very Low Housing",
+                            "Low Income Units":"Low Housing",
+                            "Moderate Income Units":"Moderate Housing",
+                            "Middle Income Units":"Middle Housing"}
+    for col in housing_column_names.items():
+        df_zip_income[col[1]] = \
+            df_zip_income["Zipcode"].apply\
+                (lambda zipcode: extract_housing_sum(zipcode, col[0]))
+
+    # Adding columns of "enough housing for x% of this income bracket".
+    # "H/H Ratio" is short for Housing / Household Ratio.
+    housing_household_names = [["Extremely Low H/H Ratio",
+                                "Extremely Low Housing",
+                                "Extremely Low Income Households"],
+                                ["Very Low H/H Ratio",
+                                 "Very Low Housing",
+                                 "Very Low Income Households"],
+                                ["Low H/H Ratio",
+                                 "Low Housing",
+                                 "Low Income Households"],
+                                ["Moderate H/H Ratio",
+                                 "Moderate Housing",
+                                 "Moderate Income Households"],
+                                ["Middle H/H Ratio",
+                                 "Middle Housing",
+                                 "Middle Income Households"]]
+    for name_dict in housing_household_names:
+        df_zip_income[name_dict[0]] = \
+            df_zip_income[name_dict[1]] / df_zip_income[name_dict[2]]
+        df_zip_income[name_dict[0]] = df_zip_income[name_dict[0]].apply\
+            (lambda number: round(number, 3))
+
     print(df_zip_income)
     df_zip_income.to_csv("NYC_Income_by_ZIP_Expanded.csv", index=False)
+
+def draw_graphs():
+    """
+    Step 4: draw stuff.
+    """
+    df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
+    df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
 def main():
     """
@@ -429,9 +493,9 @@ def main():
     - y: number of affordable housing
     figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
-    #clean_store_ahs_data()
-    #clean_store_income_data()
-    add_data_to_income()
+    # clean_store_ahs_data()
+    # clean_store_income_data()
+    # add_data_to_income()
 
 if __name__ == "__main__":
     main()
