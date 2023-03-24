@@ -309,6 +309,7 @@ def add_data_to_income():
 
     The DataFrame is then saved to a new .csv file.
     """
+    print("Beginning Step 3: adding data to income")
     df_zip_income = pd.read_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
