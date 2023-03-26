@@ -18,6 +18,9 @@ to do everything from start to finish in one go.
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import folium
+import geojson
+import scikit-learn as sklearn
 
 def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
@@ -307,12 +310,32 @@ def add_data_to_income():
     - [bracket] Households: number of households that fall under a given percent based bracket
     - [bracket] H/H ratio: percent of households in that bracket that could receive affordable
     housing, assuming a random and fair assignment of housing to households
+    - Borough: the borough for a given zip code.
 
     The DataFrame is then saved to a new .csv file.
     """
     print("Beginning Step 3: adding data to income")
     df_zip_income = pd.read_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
+    df_zips_boros = pd.read_csv("nyc_zipcodes_and_boros.csv")
+    df_zips_boros.rename(columns={"ZipCode":"Zipcode"}, inplace=True)
+
+    def extract_boro(zipcode: int)->str:
+        """
+        This function takes one input:
+        zipcode: a zip code.
+    
+        Returns a boro given a zipcode.
+        Self note: Had to manually add a couple of zipcodes to nyc_zips_and_boros.csv.
+        """
+        print("Zipcode is: ", zipcode)
+        if zipcode == 10000:
+            return "New York"
+        output_zip = df_zips_boros[df_zips_boros["Zipcode"]==zipcode]["Borough"]
+        if output_zip.empty:
+            return "Other"
+        #print(output_zip)
+        return output_zip.iloc[0]
 
     def extract_housing_sum(zipcode: int, unit_type: str)->int:
         """
@@ -354,8 +377,8 @@ def add_data_to_income():
             - End the loop by then, since all remaining brackets will not fall under the limit.
         - Return the output value.
 
-        Example: given a ZIP of 12345 and a percent bracket of "Extremely Low Income Units",
-        return a value that denotes "this many people in this zip qualify for Extremely Low category".
+        Example: given a ZIP of 12345 and a percent bracket of "Low Income Units",
+        return a value that denotes "this many people in this zip qualify for Low Income category".
         """
         percent_income_dict = {"Extremely Low Income Units":0.3,
                                "Very Low Income Units":0.5,
@@ -460,8 +483,25 @@ def add_data_to_income():
         df_zip_income[name_dict[0]] = df_zip_income[name_dict[0]].apply\
             (lambda number: round(number, 3))
 
+    df_zip_income = df_zip_income[df_zip_income["Median income (dollars)"] != 0]
+    # This line removes one boro that has like 40 households residing in it and a median income of 0
+    # Basically an irrelevant data point
+    df_zip_income["Borough"] = df_zip_income["Zipcode"].apply(extract_boro)
     print(df_zip_income)
     df_zip_income.to_csv("NYC_Income_by_ZIP_Expanded.csv", index=False)
+
+def get_zip_boro_csv():
+    """
+    An obsolete function.
+    Initially I planned to create my own Zipcode-Borough CSV using the affordable housing CSV.
+    However it was missing quite a few zip codes so I dropped this idea.
+    """
+    print("Beginning Step 2.5: building a custom ZIP-Borough CSV")
+    df_housing = pd.read_csv("AHP_by_Building_cleaned.csv", usecols=["Borough","Postcode"])
+    #print(df_housing)
+    df_housing.rename(columns={"Postcode":"Zipcode"}, inplace=True)
+    df_housing.drop_duplicates(subset=["Zipcode"], inplace=True)
+    df_housing.to_csv("zips_and_boros.csv", index=False)
 
 def draw_graphs():
     """
@@ -472,10 +512,8 @@ def draw_graphs():
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
     # scatter plot: area median income vs. Housing to Households Ratio
-    xcol = df_zip_income[df_zip_income["Housing to Households Ratio"] > 0]\
-                        ["Median income (dollars)"]
-    ycol = df_zip_income[df_zip_income["Housing to Households Ratio"] > 0]\
-                        ["Housing to Households Ratio"]
+    xcol = df_zip_income["Median income (dollars)"]
+    ycol = df_zip_income["Housing to Households Ratio"]
     plt.scatter(xcol,
                 ycol,
                 c="Blue")
@@ -484,26 +522,35 @@ def draw_graphs():
     plt.ylabel("Housing to Household Ratio")
     plt.show()
 
+    sns.scatterplot(
+        data=df_zip_income,
+        x="Median income (dollars)",
+        y="Housing to Households Ratio",
+        hue="Borough",
+        size="Total Affordable Housing"
+    )
+
+    zips = geojson.load("nyc-zip-code-tabulation-areas-polygons.geojson")
+    # based on the examples on the Folium Quick Start webpage
+    choropleth_map = folium.Map(location=[40.7, -73.9])
+    folium.Choropleth(
+        geo_data=zips,
+        name="choropleth",
+        data=df_zip_income,
+        columns=["Zipcode", "Housing to Households Ratio"],
+        key_on="feature.properties.postalCode",
+        legend_name="Housing to Household Ratio",
+
+    ).add_to(choropleth_map)
+    folium.LayerControl().add_to(choropleth_map)
+    choropleth_map.save("nyc_zips_choropleth.html")
+
 def main():
     """
     Main function.
     Each function call below correlates to a "step" of this project.
 
     Plans for next steps:
-    For every zip in income data:
-    scour through ahs data to find all rows of buildings available by 2021
-    defined as (end date before 2021)
-
-    using these rows, derive these data:
-    - number of affordable housing units available
-    - ratio of affordable housing units divided by total households
-    - number of people
-    - estimated number of households falling into various income brackets
-        - "extremely low income", "very low income", "low income", "moderate income"...
-    - ratio for each of these income brackets
-
-    insert this data into new rows of the income data df
-    save this df to a new csv file
 
     figure out what to predict (x and y values)
     possible x and y values (for a given zip, or for all of NYC):
@@ -512,10 +559,11 @@ def main():
     figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
     print("Beginning project steps")
-    # clean_store_ahs_data()
-    # clean_store_income_data()
-    # add_data_to_income()
-    draw_graphs()
+    #clean_store_ahs_data()
+    #clean_store_income_data()
+    #get_zip_boro_csv()
+    add_data_to_income()
+    #draw_graphs()
 
 if __name__ == "__main__":
     main()
