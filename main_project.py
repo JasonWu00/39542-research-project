@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import folium
 import geojson
-import scikit-learn as sklearn
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
 
 def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
