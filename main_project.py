@@ -20,8 +20,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import folium
 import geojson
-from sklearn.metrics import mean_squared_error
+from sklearn import linear_model
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures
 
 def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
@@ -74,7 +76,7 @@ def choose_postcode(postcode, boro):
 
 def impute_housing(df: pd.DataFrame)->pd.DataFrame:
     """
-    This function takes one inputs:
+    This function takes one input:
     df: a DataFrame object containing Affordable Housing Unit data.
 
     Missing values in the following columns are replaced with the following default values:
@@ -139,19 +141,19 @@ def clean_store_ahs_data():
 def strip_letters(index: str)->str:
     """
     This function takes one input:
-    index: a string for a DataFrame index.
+    index: a DataFrame index containing a zip code.
 
-    Returns a version of index with only numbers.
+    Returns the zip code stored in the index.
 
     Example:
-    input: 'ZCTAS 10101 Estimate'
+    input: 'ZCTA5 10101 Estimate'
     Returns: '10101'
     """
     output = ""
     for char in index:
         if "0" <= char <= "9":
             output += char
-    # Removes a stray 5 that slips into output
+    # Removes the stray 5 that slips into output
     return output[1:]
 
 def strip_punctuation(value: str)->str:
@@ -309,6 +311,7 @@ def add_data_to_income():
     - Housing to Household Ratio: assuming every affordable housing unit is occupied, [num] of
     the population of this zip will live in an affordable housing unit.
     - [bracket] Households: number of households that fall under a given percent based bracket
+    - [bracket] Housing: number of affordable housing intended for this percent income bracket
     - [bracket] H/H ratio: percent of households in that bracket that could receive affordable
     housing, assuming a random and fair assignment of housing to households
     - Borough: the borough for a given zip code.
@@ -352,6 +355,8 @@ def add_data_to_income():
         this function needs access to df_housing and I would much rather not pass
         df_housing to it every time it gets called (and take up unnecessary memory).
         """
+        if zipcode == 10000:
+            return df_housing[unit_type].sum()
         return df_housing[df_housing["Postcode"] == zipcode][unit_type].sum()
 
     def convert_percent_to_raw(zipcode: int, percent_bracket_name: str)->int:
@@ -512,6 +517,15 @@ def draw_graphs():
     df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
 
+    def reduce_total_housing_outlier(housing: int)->int:
+        """
+        A single-use function to fix an issue with the NYC column having a value of 200k
+        for Total Affordable Housing and thus ruining the Seaborn scatterplot dot size scaling
+        """
+        if housing > 50000:
+            return housing/10
+        return housing
+
     # scatter plot: area median income vs. Housing to Households Ratio
     xcol = df_zip_income["Median income (dollars)"]
     ycol = df_zip_income["Housing to Households Ratio"]
@@ -523,28 +537,132 @@ def draw_graphs():
     plt.ylabel("Housing to Household Ratio")
     plt.show()
 
+    df_zip_income_mod = df_zip_income
+    df_zip_income_mod["Total Affordable Housing"] = \
+        df_zip_income_mod["Total Affordable Housing"].apply(reduce_total_housing_outlier)
     sns.scatterplot(
-        data=df_zip_income,
+        data=df_zip_income_mod,
         x="Median income (dollars)",
         y="Housing to Households Ratio",
         hue="Borough",
-        size="Total Affordable Housing"
+        size="Total Affordable Housing",
+        sizes=(20,200)
     )
+    plt.savefig("NYC_Housing_to_Household_by_ZIP.png")
+    plt.show()
 
-    zips = geojson.load("nyc-zip-code-tabulation-areas-polygons.geojson")
+    zips = None
+    with open("nyc-zip-code-tabulation-areas-polygons.geojson",mode="r",encoding="utf_8") as zips:
+        zips = geojson.load(zips)
+
+    def draw_choropleth(column: str, filename: str, df: pd.DataFrame)->int:
+        """
+        This function takes two inputs:
+        column: the name of a DataFrame column.
+        filename: the name of a file to save the map to.
+
+        Draws a Choropleth map using the given column and stores it in the given filename.
+        """
+        choropleth_map = folium.Map(location=[40.7, -73.9])
+        folium.Choropleth(
+            geo_data=zips,
+            name="choropleth",
+            data=df,
+            columns=["Zipcode", column],
+            key_on="feature.properties.postalCode",
+            legend_name="Housing to Household Ratio",
+            fill_color="YlOrRd",
+            fill_opacity=0.75
+
+        ).add_to(choropleth_map)
+        folium.LayerControl().add_to(choropleth_map)
+        choropleth_map.save(filename)
+        return 0
+    # =======================================================
     # based on the examples on the Folium Quick Start webpage
-    choropleth_map = folium.Map(location=[40.7, -73.9])
-    folium.Choropleth(
-        geo_data=zips,
-        name="choropleth",
-        data=df_zip_income,
-        columns=["Zipcode", "Housing to Households Ratio"],
-        key_on="feature.properties.postalCode",
-        legend_name="Housing to Household Ratio",
+    draw_choropleth("Housing to Households Ratio", "nyc_zips_choropleth.html", df_zip_income)
 
-    ).add_to(choropleth_map)
-    folium.LayerControl().add_to(choropleth_map)
-    choropleth_map.save("nyc_zips_choropleth.html")
+    # because a few outliers are making it hard to show the finer details of the other zips:
+    # a second choropleth map that excludes these outliers
+    draw_choropleth("Housing to Households Ratio", "nyc_zips_choropleth_2.html",\
+                    df_zip_income[df_zip_income["Housing to Households Ratio"] < 0.5])
+
+    # a choropleth on average income
+    draw_choropleth("Median income (dollars)", "nyc_zips_income_choropleth.html", df_zip_income)
+
+def predict():
+    """
+    Step 5: predict values.
+
+    Work for this function is lifted from several functions from Assignment 7.
+    """
+    print("Beginning Step 5: attempting to do predictive modeling")
+    df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
+    #df_zip_income = df_zip_income[df_zip_income["Housing to Households Ratio"] < 0.5]
+    df_zip_income["Housing to Households Ratio"] = \
+        df_zip_income["Housing to Households Ratio"].apply(lambda ratio: ratio*100)
+    x_train,x_test,y_train,y_test =\
+        train_test_split(df_zip_income["Median income (dollars)"],\
+                         df_zip_income["Housing to Households Ratio"],
+                         test_size=0.25,
+                         random_state=10000)
+
+    print("contents of xtrain and ytrain:")
+    print(x_train)
+    print(y_train)
+    # taken from fit_poly() of assignment 7
+    degree_error_combo = [-1, 2**32]
+    for degree in range(1,6):
+        poly = PolynomialFeatures(degree=degree, include_bias=False)
+        poly_features = poly.fit_transform(x_train.to_frame())
+
+        #print("poly features:")
+        #print(poly_features)
+        reg = linear_model.LinearRegression().fit(poly_features, y_train)
+        y_predicted = reg.predict(poly_features)
+        error = mean_squared_error(y_train, y_predicted)
+        if error < degree_error_combo[1]:
+            degree_error_combo[0] = degree
+            degree_error_combo[1] = error
+
+    print("Best degree and error:")
+    print(degree_error_combo[0])
+    print(degree_error_combo[1])
+
+    # taken from fit_model() of assignment 7
+    poly = PolynomialFeatures(degree=degree_error_combo[0], include_bias=False)
+    poly_features = poly.fit_transform(x_train.to_frame())
+    my_reg = linear_model.LassoCV().fit(poly_features, y_train)
+
+    x_test_poly = poly.fit_transform(x_test.to_frame())
+    y_predicted = my_reg.predict(x_test_poly)
+
+    print("my_reg coefficients and intercept:")
+    print(my_reg.coef_)
+    print(my_reg.intercept_)
+
+    print("y_predicted and y_test:")
+    print(y_predicted)
+    print(y_test)
+
+    print("MSE and r2 scores for regression:")
+    print(mean_squared_error(y_predicted, y_test))
+    print(r2_score(y_predicted, y_test))
+
+    df_zip_income_mod = df_zip_income
+    df_zip_income_mod["Total Affordable Housing"] = \
+        df_zip_income_mod["Total Affordable Housing"].apply(lambda housing: min(housing, 50000))
+
+    sns.scatterplot(
+        data=df_zip_income_mod,
+        x="Median income (dollars)",
+        y="Housing to Households Ratio",
+        hue="Borough",
+        size="Total Affordable Housing",
+        sizes=(20,200)
+    )
+    plt.plot(x_test, y_predicted)
+    plt.show()
 
 def main():
     """
@@ -563,8 +681,9 @@ def main():
     #clean_store_ahs_data()
     #clean_store_income_data()
     #get_zip_boro_csv()
-    add_data_to_income()
+    #add_data_to_income()
     #draw_graphs()
+    predict()
 
 if __name__ == "__main__":
     main()
