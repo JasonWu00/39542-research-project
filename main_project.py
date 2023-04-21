@@ -3,7 +3,7 @@ Name: Ze Hong Wu
 Email: zehong.wu@macaulay.cuny.edu
 Resources:
 Pandas documentation for all manner of debugging help
-Title: -
+Title: Affordable Housing in NYC: Distribution and Availability Over Time
 URL: -
 
 This program is free software: you can redistribute it and/or modify it under the
@@ -125,11 +125,15 @@ def impute_housing(df: pd.DataFrame)->pd.DataFrame:
     df["Percent"] = df["Percent"].apply(lambda percent: round(percent, 3))
     return df
 
-def clean_store_ahs_data():
+def clean_store_ahs_data(import_name: str, savefile_name: str):
     """
     Step 1: clean up the Affordable Housing data and save it to a csv file.
+
+    This function takes two inputs:
+    import_name: name of a csv file to import data from.
+    savefile_name: name of a csv file to save cleaned data to.
     """
-    print("Beginning step 1: importing housing data")
+    print("Beginning step 1: importing Affordable Housing data")
     desired_columns = [ "Project ID", "Project Start Date", "Project Completion Date",\
                         "Borough", "Postcode", "Census Tract",\
                         "NTA - Neighborhood Tabulation Area",\
@@ -139,12 +143,11 @@ def clean_store_ahs_data():
                         "Middle Income Units", "All Counted Units", "Total Units"]
     # print("Before import")
     # print(desired_columns)
-    df_housing = import_housing("Affordable_Housing_Production_by_Building.csv", desired_columns)
+    df_housing = import_housing(import_name, desired_columns)
 
     # saving intermediate work to .csv files
     # to skip earlier work in later sections
-    # to do everything in one go, cmment out all save lines
-    df_housing.to_csv("AHP_by_Building_cleaned.csv", index=False)
+    df_housing.to_csv(savefile_name, index=False)
 
     # df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
     # print(df_housing)
@@ -170,7 +173,7 @@ def strip_letters(index: str)->str:
 def strip_punctuation(value: str)->str:
     """
     This function takes one input:
-    value: a number-like value from a DataFrame
+    value: a string containing a percentage value from a DataFrame
 
     Returns a version of value without any percent signs.
 
@@ -206,10 +209,11 @@ def strip_quotations(column: str)->str:
             output += char
     return output
 
-def impute_income(df: pd.DataFrame)->pd.DataFrame:
+def impute_income(df: pd.DataFrame, year: int)->pd.DataFrame:
     """
-    This function takes one input:
+    This function takes two inputs:
     df: a DataFrame object containing Income by ZIP code data.
+    year: the year the data corresponds to.
 
     The DataFrame undergoes the following changes:
     - Remove all columns that isn't an estimate of number of households
@@ -242,6 +246,11 @@ def impute_income(df: pd.DataFrame)->pd.DataFrame:
     for col in df.columns:
         rename_column_dict[col] = strip_quotations(col.strip())
     df.rename(columns=rename_column_dict, inplace=True)
+
+    # older versions of the income by zip files has percent imputed instead of percent allocated
+    # this is a hot-fix to deal with this without modifying other lines of code
+    if year <= 2015:
+        df.rename(columns={"PERCENT IMPUTED":"PERCENT ALLOCATED"}, inplace=True)
 
     # drop useless columns
     columns_to_drop = ["PERCENT ALLOCATED", "Family income in the past 12 months",\
@@ -280,10 +289,11 @@ def impute_income(df: pd.DataFrame)->pd.DataFrame:
 
     return df[df["Total Households"] != 0]
 
-def import_income(csv_name: str)->pd.DataFrame:
+def import_income(csv_name: str, year: int)->pd.DataFrame:
     """
-    This function takes one input:
-    csv_name: the name of a .csv file to read.
+    This function takes two inputs:
+    csv_name: the name of an Income by ZIP .csv file to read.
+    year: the year the file's data corresponds to.
 
     The data in the .csv file is read into a DataFrame and then transposed.\n
     The DataFrame is then passed to impute_income().
@@ -298,42 +308,56 @@ def import_income(csv_name: str)->pd.DataFrame:
     df_zip_income = df_zip_income.transpose()
     #print(df_zip_income)
 
-    return impute_income(df_zip_income)
+    return impute_income(df_zip_income, year)
 
-def clean_store_income_data():
+def clean_store_income_data(import_name: str, savefile_name: str, year: int):
     """
     Step 2: clean up the 2021 Income by ZIP data and save it to a csv file.
-    """
-    df_zip_income = import_income("NYC_income_by_zip_2021_untransposed.csv")
-    df_zip_income.to_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv", index=True)
 
-def placeholder():
+    This function takes in three inputs:
+    import_name: the name of an Income by ZIP data file to read from.
+    savefile_name: the name of a csv file to save cleaned income data to.
+    year: the year the Income by ZIP data corresponds to.
     """
-    Docstring
-    """
+    print("Beginning Step 2: cleaning Income by ZIP data")
+    df_zip_income = import_income(import_name, year)
+    df_zip_income.to_csv(savefile_name, index=True)
 
-def add_data_to_income():
+def add_data_to_income(import_name: str, savefile_name: str, year: int):
     """
     Step 3: add to the Income by ZIP csv columns of possibly useful data.
 
-    The data produced by Steps 1 and 2 are loaded into DataFrames.\n
+    This function takes three inputs:
+    import_name: the name of a Income by ZIP csv file to read from.
+    savefile_name: the name of a csv file to save modified Income by ZIP data to.
+    year: a cutoff that tells the code to drop all rows with completion years after it.
+
+    The data produced by Steps 1 and 2 are loaded into DataFrames.
+
     The Income by ZIP DataFrame gains the following columns:
     - Total Affordable Housing: number of affordable housing units present in each zip code.
-    - Housing to Household Ratio: assuming every affordable housing unit is occupied, [num] of
+    - Housing to Household Ratio: assuming every affordable housing unit is occupied, [%] of
     the population of this zip will live in an affordable housing unit.
     - [bracket] Households: number of households that fall under a given percent based bracket
     - [bracket] Housing: number of affordable housing intended for this percent income bracket
     - [bracket] H/H ratio: percent of households in that bracket that could receive affordable
-    housing, assuming a random and fair assignment of housing to households
+    housing designated for their bracket, assuming a fair assignment of housing to households
     - Borough: the borough for a given zip code.
 
     The DataFrame is then saved to a new .csv file.
     """
-    print("Beginning Step 3: adding data to income")
-    df_zip_income = pd.read_csv("NYC_Income_Brackets_by_ZIP_cleaned.csv")
+    print("Beginning Step 3: adding data to Income by ZIP data")
+    df_zip_income = pd.read_csv(import_name)
+    # hard-coded affordable housing csv name, because I am only working with one such data set.
     df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
+    # same thing with zips and boros
     df_zips_boros = pd.read_csv("nyc_zipcodes_and_boros.csv")
     df_zips_boros.rename(columns={"ZipCode":"Zipcode"}, inplace=True)
+
+    # this line filters out housing projects not complete after the specified year
+    # but keeps preservation projects since those projects must be working on existing units
+    df_housing = df_housing[(df_housing["Project End Year"] <= year) |
+                            (df_housing["Reporting Construction Type"] == "Preservation")]
 
     def extract_boro(zipcode: int)->str:
         """
@@ -343,13 +367,15 @@ def add_data_to_income():
         Returns a boro given a zipcode.
         Self note: Had to manually add a couple of zipcodes to nyc_zips_and_boros.csv.
         """
-        print("Zipcode is: ", zipcode)
+        #print("Zipcode is: ", zipcode)
         if zipcode == 10000:
             return "New York"
         output_zip = df_zips_boros[df_zips_boros["Zipcode"]==zipcode]["Borough"]
         if output_zip.empty:
             return "Other"
         #print(output_zip)
+        # output_zip is a series containing 1 thing
+        # iloc[0] returns the only thing stored inside (the borough value)
         return output_zip.iloc[0]
 
     def extract_housing_sum(zipcode: int, unit_type: str)->int:
@@ -403,15 +429,15 @@ def add_data_to_income():
                                "Moderate Income Units":1.2,
                                "Middle Income Units":1.65}
         max_income_dict = {"Less than $10,000":10000,
-                               "$10,000 to $14,999":15000,
-                               "$15,000 to $24,999":25000,
-                               "$25,000 to $34,999":35000,
-                               "$35,000 to $49,999":50000,
-                               "$50,000 to $74,999":75000,
-                               "$75,000 to $99,999":100000,
-                               "$100,000 to $149,999":150000,
-                               "$150,000 to $199,999":200000,
-                               "$200,000 or more":500000}
+                            "$10,000 to $14,999":15000,
+                            "$15,000 to $24,999":25000,
+                            "$25,000 to $34,999":35000,
+                            "$35,000 to $49,999":50000,
+                            "$50,000 to $74,999":75000,
+                            "$75,000 to $99,999":100000,
+                            "$100,000 to $149,999":150000,
+                            "$150,000 to $199,999":200000,
+                            "$200,000 or more":500000}
         # Chain indexing returns a Series of 1 thing, so the iloc is necessary
         median = (df_zip_income[df_zip_income["Zipcode"] == zipcode]\
                   ["Median income (dollars)"]).iloc[0]
@@ -504,8 +530,8 @@ def add_data_to_income():
     # This line removes one boro that has like 40 households residing in it and a median income of 0
     # Basically an irrelevant data point
     df_zip_income["Borough"] = df_zip_income["Zipcode"].apply(extract_boro)
-    print(df_zip_income)
-    df_zip_income.to_csv("NYC_Income_by_ZIP_Expanded.csv", index=False)
+    #print(df_zip_income)
+    df_zip_income.to_csv(savefile_name, index=False)
 
 def get_zip_boro_csv():
     """
@@ -520,13 +546,12 @@ def get_zip_boro_csv():
     df_housing.drop_duplicates(subset=["Zipcode"], inplace=True)
     df_housing.to_csv("zips_and_boros.csv", index=False)
 
-def draw_graphs():
+def draw_graphs(income_csv: str, choropleth_name: str):
     """
     Step 4: draw stuff.
     """
     print("Beginning Step 4: drawing graphs")
-    df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
-    df_housing = pd.read_csv("AHP_by_Building_cleaned.csv")
+    df_zip_income = pd.read_csv(income_csv)
 
     def reduce_total_housing_outlier(housing: int)->int:
         """
@@ -538,19 +563,11 @@ def draw_graphs():
         return housing
 
     # scatter plot: area median income vs. Housing to Households Ratio
-    xcol = df_zip_income["Median income (dollars)"]
-    ycol = df_zip_income["Housing to Households Ratio"]
-    plt.scatter(xcol,
-                ycol,
-                c="Blue")
-    plt.title("Area income and housing availability, by ZIP")
-    plt.xlabel("Median income (US Dollars)")
-    plt.ylabel("Housing to Household Ratio")
-    plt.show()
 
     df_zip_income_mod = df_zip_income
     df_zip_income_mod["Total Affordable Housing"] = \
         df_zip_income_mod["Total Affordable Housing"].apply(reduce_total_housing_outlier)
+
     sns.scatterplot(
         data=df_zip_income_mod,
         x="Median income (dollars)",
@@ -632,14 +649,19 @@ def find_best_degree(x_train, y_train):
     # for loop ends here
     return degree_error_combo[0], degree_error_combo[1]
 
-def predict():
+def predict(income_csv: str, scatterplot_name: str, regression_name: str):
     """
     Step 5: predict values.
+
+    This function takes in three inputs:
+    income_csv: name of a Income by ZIP data file to read from.
+    scatterplot_name: name of a scatter plot to be generated.
+    regression_name: name of a regression plot to be generated.
 
     Work for this function is lifted from several functions from Assignment 7.
     """
     print("Beginning Step 5: attempting to do predictive modeling")
-    df_zip_income = pd.read_csv("NYC_Income_by_ZIP_expanded.csv")
+    df_zip_income = pd.read_csv(income_csv)
 
     # these four lines are part of an attempt to artifically make the x-y values
     # less stretched out across a large range and reduce error in the process
@@ -688,6 +710,7 @@ def predict():
     print(r2_score(y_test, y_predicted))
 
     df_zip_income_mod = df_zip_income
+    # "deals with" outliers by artificially reducing them to 50000
     df_zip_income_mod["Total Affordable Housing"] = \
         df_zip_income_mod["Total Affordable Housing"].apply(lambda housing: min(housing, 50000))
 
@@ -700,7 +723,7 @@ def predict():
         sizes=(20,200)
     )
     plt.plot(x_test, y_predicted, color="black")
-    plt.savefig("NYC_Housing_Household_vs_Income_with_regression.png")
+    plt.savefig(scatterplot_name)
     plt.show()
 
     # calculating error of this regression so it can be plotted
@@ -726,21 +749,21 @@ def predict():
         #sizes=(20,200)
     )
     plt.axhline(y=0, color="black")
-    plt.savefig("Regression_error_graph.png")
+    plt.savefig(regression_name)
     plt.show()
 
     # same as above, but with a few outliers removed
-    sns.scatterplot(
-        data=df_zip_income_mod[df_zip_income_mod["Housing to Households Ratio"] < 0.5],
-        x="Median income (dollars)",
-        y="Predicted/Actual Error",
-        #hue="Borough",
-        #size="Total Affordable Housing",
-        #sizes=(20,200)
-    )
-    plt.axhline(y=0, color="black")
-    plt.savefig("Regression_error_graph_without_outliers.png")
-    plt.show()
+    # sns.scatterplot(
+    #     data=df_zip_income_mod[df_zip_income_mod["Housing to Households Ratio"] < 0.5],
+    #     x="Median income (dollars)",
+    #     y="Predicted/Actual Error",
+    #     #hue="Borough",
+    #     #size="Total Affordable Housing",
+    #     #sizes=(20,200)
+    # )
+    # plt.axhline(y=0, color="black")
+    # plt.savefig("Regression_error_graph_without_outliers.png")
+    # plt.show()
 
 def main():
     """
@@ -756,12 +779,29 @@ def main():
     figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
     print("Beginning project steps")
-    #clean_store_ahs_data()
-    #clean_store_income_data()
-    #get_zip_boro_csv()
-    #add_data_to_income()
-    #draw_graphs()
-    predict()
+
+    # this only needs to be called once, since housing data for all years are all in one csv.
+    #clean_store_ahs_data("Affordable_Housing_Production_by_Building.csv",
+    #                     "AHP_by_Building_cleaned.csv")
+
+    # the 2 calls below will be repeated for every year-based zipcode income prediction.
+    # Important: do not include margin of error in the raw csv files
+
+    for year in range(2011, 2022):
+        print(f"Cleaning and modifying data for year {year}")
+        clean_store_income_data(f"raw_datasets/NYC_income_by_zip_{year}.csv",
+                                f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv", year)
+        add_data_to_income(f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv",
+                           f"processed_datasets/NYC_Income_by_ZIP_{year}_Expanded.csv", year)
+        # stuff
+
+    # these lines are called when required
+    #draw_graphs("NYC_Income_by_ZIP_expanded.csv", )
+    #predict("NYC_Income_by_ZIP_expanded.csv",
+    #        "NYC_Housing_Household_vs_Income_with_regression.png",
+    #        "Regression_error_graph.png")
+
+    # after doing the cleaning and imputing for 2021, do the same for the other years
 
 if __name__ == "__main__":
     main()
