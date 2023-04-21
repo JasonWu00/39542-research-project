@@ -20,10 +20,10 @@ I intend to assess the following:
 Note that I am not a professional in city planning or otherwise well-versed on the intricacies of affordable housing. The observations made in this project are not legal or policy advice and should not be taken as indisputable truth.
 
 ### Sources
-The NYC Zip Codes GeoJSON file (`nyc-zip-code-tabulation-areas0polygons.geojson`) is from [this link](https://www.kaggle.com/datasets/saidakbarp/nyc-zipcode-geodata?resource=download) and released to the Public Domain under CC0.
+The NYC Zip Codes GeoJSON file (`nyc-zip-code-tabulation-areas0polygons.geojson`) is from [this link](https://www.kaggle.com/datasets/saidakbarp/nyc-zipcode-geodata?resource=download) and released to the Public Domain under the CC0 license.
 
 The Income Bracket by ZIP CSV file (`nyc_income_by_zip_2021*.csv`) is from [the US Census](https://data.census.gov/table?q=Income+and+Earnings&t=Earnings+(Individuals):Income+(Households,+Families,+Individuals)&g=1600000US3651000,3651000$8600000&tid=ACSST5Y2021.S1901).
 
 The Affordable Housing CSV (`Affordable_Housing_Production_by_Building.csv`) is from [NYC Open Data](https://data.cityofnewyork.us/Housing-Development/Affordable-Housing-Production-by-Building/hg8x-zxpr).
 
-The NYC Zips and Boroughs CSV (`NYC_zipcodes_and_boros.csv`) is from [this GitHub repository by Eric Gregory Webb](https://github.com/erikgregorywebb/nyc-housing/blob/master/Data/nyc-zip-codes.csv).
+The NYC Zips and Boroughs CSV (`NYC_zipcodes_and_boros.csv`) is from [this GitHub repository by Eric Gregory Webb](https://github.com/erikgregorywebb/nyc-housing/blob/master/Data/nyc-zip-codes.csv) and released under the MIT license.
