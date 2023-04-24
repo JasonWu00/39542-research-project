@@ -6,6 +6,8 @@ Pandas documentation for all manner of debugging help
 Title: Affordable Housing in NYC: Distribution and Availability Over Time
 URL: -
 
+Copyright (C) 2023 Jason Wu
+
 This program is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software Foundation,
 either version 3 of the License, or (at your option) any later version.
@@ -14,19 +16,12 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.
 If not, see <https://www.gnu.org/licenses/>. 
-
-================
-
-I will be using this space to put down some notes about my coding decisions.
-
-Some of the functions store data into .csv files.
-This is so that I do not have to clean the data all over again
-and can instead start with some of the work already done.
-You can un-comment all of the functions calls in main()
-to do everything from start to finish in one go.
 """
 
 import pandas as pd
+# on my device's vscode tab 'pandas' is grayed out
+# and all of its associated functions do not display docstrings.
+# this is probably just a local python issue.
 import matplotlib.pyplot as plt
 import seaborn as sns
 import folium
@@ -42,8 +37,8 @@ def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     csv_name: the name of a .csv file to read.
     columns_to_use: a list of columns to keep.
 
-    The data in the .csv file is read into a DataFrame.\n
-    If a valid list of columns is provided, only those columns will be kept.\n
+    The data in the .csv file is read into a DataFrame.
+    If a valid list of columns is provided, only those columns will be kept.
     The DataFrame is then passed to impute_housing().
 
     Returns an imputed version of the DataFrame.
@@ -99,7 +94,7 @@ def impute_housing(df: pd.DataFrame)->pd.DataFrame:
     Project End Year: year project ends
     Percent: All Counted Units / Total Units
 
-    The imputing will be done "manually" (unique code for every column).\n
+    The imputing will be done "manually" (unique code for every column).
     This is bad coding form, but circumstances make a more "elegant" solution difficult.
 
     Returns the imputed DataFrame.
@@ -110,7 +105,8 @@ def impute_housing(df: pd.DataFrame)->pd.DataFrame:
     df["Project Start Date"] = df["Project Start Date"]\
                                 .apply(lambda date: choose_date(date,"01/01/2024"))
 
-    df["Postcode"] = df.apply(lambda row: choose_postcode(row["Postcode"], row["Borough"]), axis=1)
+    df["Postcode"] = df.apply(lambda row: choose_postcode(row["Postcode"], row["Borough"]),
+                              axis=1)
     df["Postcode"] = df["Postcode"].apply(int)
 
     df["Project Start Year"] = df["Project Start Date"]\
@@ -533,22 +529,14 @@ def add_data_to_income(import_name: str, savefile_name: str, year: int):
     #print(df_zip_income)
     df_zip_income.to_csv(savefile_name, index=False)
 
-def get_zip_boro_csv():
-    """
-    An obsolete function.
-    Initially I planned to create my own Zipcode-Borough CSV using the affordable housing CSV.
-    However it was missing quite a few zip codes so I dropped this idea.
-    """
-    print("Beginning Step 2.5: building a custom ZIP-Borough CSV")
-    df_housing = pd.read_csv("AHP_by_Building_cleaned.csv", usecols=["Borough","Postcode"])
-    #print(df_housing)
-    df_housing.rename(columns={"Postcode":"Zipcode"}, inplace=True)
-    df_housing.drop_duplicates(subset=["Zipcode"], inplace=True)
-    df_housing.to_csv("zips_and_boros.csv", index=False)
-
-def draw_graphs(income_csv: str, choropleth_name: str):
+def draw_graphs(income_csv: str, choropleth_name: str, year: int):
     """
     Step 4: draw stuff.
+
+    This function takes in 3 inputs:
+    income_csv: name of a Income by ZIP csv to read.
+    choropleth_name: name that the folium choropleth map should be saved to.
+    year: the year corresponding to the income csv, to be used in naming some things.
     """
     print("Beginning Step 4: drawing graphs")
     df_zip_income = pd.read_csv(income_csv)
@@ -575,8 +563,8 @@ def draw_graphs(income_csv: str, choropleth_name: str):
         hue="Borough",
         size="Total Affordable Housing",
         sizes=(20,200)
-    )
-    plt.savefig("NYC_Housing_to_Household_by_ZIP.png")
+    ).set(title="Housing to Household Ratios per ZIP")
+    plt.savefig(f"NYC_Housing_to_Household_by_ZIP_{year}.png")
     plt.show()
 
     zips = None
@@ -608,15 +596,17 @@ def draw_graphs(income_csv: str, choropleth_name: str):
         return 0
     # =======================================================
     # based on the examples on the Folium Quick Start webpage
-    draw_choropleth("Housing to Households Ratio", "nyc_zips_choropleth.html", df_zip_income)
+    # draw_choropleth("Housing to Households Ratio", "nyc_zips_choropleth.html", df_zip_income)
 
     # because a few outliers are making it hard to show the finer details of the other zips:
     # a second choropleth map that excludes these outliers
-    draw_choropleth("Housing to Households Ratio", "nyc_zips_choropleth_2.html",\
+    draw_choropleth("Housing to Households Ratio", choropleth_name,\
                     df_zip_income[df_zip_income["Housing to Households Ratio"] < 0.5])
 
     # a choropleth on average income
-    draw_choropleth("Median income (dollars)", "nyc_zips_income_choropleth.html", df_zip_income)
+    draw_choropleth("Median income (dollars)",
+                    f"nyc_zips_income_{year}_choropleth.html",
+                    df_zip_income)
 
 def find_best_degree(x_train, y_train):
     """
@@ -628,7 +618,11 @@ def find_best_degree(x_train, y_train):
     and the MSE for that degree.
     Taken from fit_poly() of assignment 7.
     """
+    # stores paired values of best degree found so far and its corresponding error value
     degree_error_combo = [-1, 2**32]
+    # if the current regression degree is better than the prev one by less than this amount
+    # then it is considered "good enough".
+    min_error_threshold = 0.05
     for degree in range(1,12):
         poly = PolynomialFeatures(degree=degree)
         poly_features = poly.fit_transform(x_train.to_frame())
@@ -638,39 +632,76 @@ def find_best_degree(x_train, y_train):
         reg = linear_model.LinearRegression().fit(poly_features, y_train)
         y_predicted = reg.predict(poly_features)
         error = mean_squared_error(y_train, y_predicted)
-        print("Testing reg of degree ", degree)
-        print("Error is: ", error)
+        print(f"Testing linear regression model of degree {degree}")
+        print("Mean Squared Error is: ", error)
         if error < degree_error_combo[1]:
-            if 1.0 - abs(error / degree_error_combo[1]) > 0.05:
+            if 1.0 - abs(error / degree_error_combo[1]) > min_error_threshold:
                 degree_error_combo[0] = degree
                 degree_error_combo[1] = error
             else:
                 break
+        else:
+            break
     # for loop ends here
     return degree_error_combo[0], degree_error_combo[1]
 
-def predict(income_csv: str, scatterplot_name: str, regression_name: str):
+def draw_regression(df: pd.DataFrame,
+                    x_test: list,
+                    y_pred: list,
+                    scatter_name: str,
+                    regression_name: str,
+                    year: int):
+    """
+    Step 5.5: draw regression graphs.
+
+    This function takes in 5 inputs:
+    df: a DataFrame containing x and y columns to source scatterplot points from.
+    x_test: list of x-values for the regression line.
+    y_pred: list of y-values for the regression line.
+    scatter_name: name of the scatterplot to be saved.
+    regression_name: name of the regression graph to be saved.
+    """
+    sns.scatterplot(
+        data=df,
+        x="Median income (dollars)",
+        y="Housing to Households Ratio",
+        hue="Borough",
+        size="Total Affordable Housing",
+        sizes=(20,200)
+    ).set(title="Housing to Household Ratios per ZIP with regression line")
+    plt.plot(x_test, y_pred, color="black")
+    plt.savefig(scatter_name)
+    plt.show()
+
+    sns.scatterplot(
+        data=df,
+        x="Median income (dollars)",
+        y="Predicted/Actual Error",
+        #hue="Borough",
+        #size="Total Affordable Housing",
+        #sizes=(20,200)
+    ).set(title=f"Regression graph for year {year}")
+    plt.axhline(y=0, color="black")
+    plt.savefig(regression_name)
+    plt.show()
+    return 0
+
+def predict(income_csv: str, scatterplot_name: str, regression_name: str, graphing: bool, year: int):
     """
     Step 5: predict values.
 
-    This function takes in three inputs:
+    This function takes in 5 inputs:
     income_csv: name of a Income by ZIP data file to read from.
     scatterplot_name: name of a scatter plot to be generated.
     regression_name: name of a regression plot to be generated.
+    graphing: tells the function if it should draw graphs.
+    year: year corresponding to the income by ZIP data file.
 
     Work for this function is lifted from several functions from Assignment 7.
     """
     print("Beginning Step 5: attempting to do predictive modeling")
+    print(f"Data set to be processed: {income_csv}")
     df_zip_income = pd.read_csv(income_csv)
-
-    # these four lines are part of an attempt to artifically make the x-y values
-    # less stretched out across a large range and reduce error in the process
-    #df_zip_income = df_zip_income[df_zip_income["Housing to Households Ratio"] < 0.5]
-    #df_zip_income = df_zip_income[df_zip_income["Housing to Households Ratio"] > 0.0]
-    #df_zip_income["Housing to Households Ratio"] = \
-        #df_zip_income["Housing to Households Ratio"].apply(lambda ratio: ratio*100)
-    #df_zip_income["Median income (dollars)"] = \
-        #df_zip_income["Median income (dollars)"].apply(lambda income: income/1000)
 
     x_train,x_test,y_train,y_test =\
         train_test_split(df_zip_income["Median income (dollars)"],\
@@ -705,65 +736,50 @@ def predict(income_csv: str, scatterplot_name: str, regression_name: str):
     # print(y_predicted)
     # print(y_test)
 
-    print("MSE and r2 scores for regression:")
+    print("MSE and r2 scores for this regression:")
     print(mean_squared_error(y_test, y_predicted))
     print(r2_score(y_test, y_predicted))
 
-    df_zip_income_mod = df_zip_income
     # "deals with" outliers by artificially reducing them to 50000
-    df_zip_income_mod["Total Affordable Housing"] = \
-        df_zip_income_mod["Total Affordable Housing"].apply(lambda housing: min(housing, 50000))
-
-    sns.scatterplot(
-        data=df_zip_income_mod,
-        x="Median income (dollars)",
-        y="Housing to Households Ratio",
-        hue="Borough",
-        size="Total Affordable Housing",
-        sizes=(20,200)
-    )
-    plt.plot(x_test, y_predicted, color="black")
-    plt.savefig(scatterplot_name)
-    plt.show()
+    # the scatter plot generated using the data sizes each dot based on total affordable housing
+    # this ensures that the "all of NYC" dot doesn't skew the dot sizes too greatly
+    df_zip_income["Total Affordable Housing"] = \
+        df_zip_income["Total Affordable Housing"].apply(lambda housing: min(housing, 50000))
 
     # calculating error of this regression so it can be plotted
     x_test_poly_all = poly.fit_transform(df_zip_income["Median income (dollars)"].to_frame())
     y_predicted_all = my_reg.predict(x_test_poly_all)
 
-    df_zip_income_mod["Predicted H/H Ratio"] = y_predicted_all
-    df_zip_income_mod["Predicted H/H Ratio"].apply(lambda ratio: round(ratio, 3))
-    df_zip_income_mod["Predicted/Actual Error"] = \
-        df_zip_income_mod["Predicted H/H Ratio"] - \
-            df_zip_income_mod["Housing to Households Ratio"]
-    # print("printing side by side: predicted, actual, error")
-    # print(df_zip_income_mod[["Predicted H/H Ratio",
-    #                          "Housing to Households Ratio",
-    #                          "Predicted/Actual Error"]])
+    df_zip_income["Predicted H/H Ratio"] = y_predicted_all
+    df_zip_income["Predicted H/H Ratio"].apply(lambda ratio: round(ratio, 3))
+    df_zip_income["Predicted/Actual Error"] = \
+        df_zip_income["Predicted H/H Ratio"] - \
+            df_zip_income["Housing to Households Ratio"]
 
-    sns.scatterplot(
-        data=df_zip_income_mod,
-        x="Median income (dollars)",
-        y="Predicted/Actual Error",
-        #hue="Borough",
-        #size="Total Affordable Housing",
-        #sizes=(20,200)
-    )
-    plt.axhline(y=0, color="black")
-    plt.savefig(regression_name)
-    plt.show()
+    if graphing:
+        draw_regression(df_zip_income,
+                        x_test,
+                        y_predicted,
+                        scatterplot_name,
+                        regression_name,
+                        year)
 
-    # same as above, but with a few outliers removed
-    # sns.scatterplot(
-    #     data=df_zip_income_mod[df_zip_income_mod["Housing to Households Ratio"] < 0.5],
-    #     x="Median income (dollars)",
-    #     y="Predicted/Actual Error",
-    #     #hue="Borough",
-    #     #size="Total Affordable Housing",
-    #     #sizes=(20,200)
-    # )
-    # plt.axhline(y=0, color="black")
-    # plt.savefig("Regression_error_graph_without_outliers.png")
-    # plt.show()
+    # returning some x and y values to be graphed to show a particular year's predictions.
+    # the x, y values are custom made to ensure the prediction line is smooth
+    my_x_test = []
+    for xval in range(0, 200000, 1000):
+        my_x_test.append(xval)
+    my_x_test_poly = poly.fit_transform(pd.Series(my_x_test).to_frame())
+    my_y_predicted = my_reg.predict(my_x_test_poly)
+
+    print("Predictive modeling step complete")
+    print()
+
+    return my_x_test,\
+            my_y_predicted,\
+            mean_squared_error(y_test, y_predicted),\
+            r2_score(y_test, y_predicted)
+
 
 def main():
     """
@@ -771,12 +787,6 @@ def main():
     Each function call below correlates to a "step" of this project.
 
     Plans for next steps:
-
-    figure out what to predict (x and y values)
-    possible x and y values (for a given zip, or for all of NYC):
-    - x: number of in-need households
-    - y: number of affordable housing
-    figure out how to draw choropleth graphs and other graphs as noted in project proposal
     """
     print("Beginning project steps")
 
@@ -787,19 +797,76 @@ def main():
     # the 2 calls below will be repeated for every year-based zipcode income prediction.
     # Important: do not include margin of error in the raw csv files
 
+    # for year in range(2011, 2022):
+    #     print(f"Cleaning and modifying data for year {year}")
+    #     clean_store_income_data(f"raw_datasets/NYC_income_by_zip_{year}.csv",
+    #                             f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv", year)
+    #     add_data_to_income(f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv",
+    #                        f"processed_datasets/NYC_Income_by_ZIP_{year}_Expanded.csv", year)
+
+    # initializing a dict to turn into a df to store predictive model outputs for each year
+    predictions_dict = {"Year": [0],
+                        "xvals": [[1,2,3,4,5,6,7,8,9,0]],
+                        "yvals": [[1,2,3,4,5,6,7,8,9,0]],
+                        "MSE": [0.0],
+                        "R2": [0.0]}
+    predictions_df = pd.DataFrame.from_dict(predictions_dict)
+    #print(predictions_df)
+
+    # preliminary prediction on the 2021 data set and drawing a regression graph
+    #predict("processed_datasets/NYC_Income_by_ZIP_2021_Expanded.csv",
+    #        "visualizations/NYC_Household_vs_Income_with_regression_2021.png",
+    #        "visualizations/Regression_error_graph_2021.png", True)
+
+    # making models for 2011 to 2021 data sets and retrieving the x and y values
+    # for each model so that they can be all graphed at once
+
+    # dictionary of years and corresponding line colors.
+    line_colors_dict = {2021: "#ff0000",
+                        2020: "#0000dd",
+                        2019: "#bb0000",
+                        2018: "#990000",
+                        2017: "#880000",
+                        2016: "#770000",
+                        2015: "#660000",
+                        2014: "#550000",
+                        2013: "#330000",
+                        2012: "#110000",
+                        2011: "#000000"}
+
+    sns.FacetGrid(pd.read_csv("processed_datasets/NYC_Income_by_ZIP_2021_expanded.csv"))
+    plt.figure(figsize=(6,6))
+    plt.ylim(0.0, 0.1)
+    plt.title("Predictive models from 2011 (black) to 2021 (red)")
+    plt.xlabel("Average Housing to Household Ratio")
+    plt.ylabel("Area Median Income")
+
     for year in range(2011, 2022):
-        print(f"Cleaning and modifying data for year {year}")
-        clean_store_income_data(f"raw_datasets/NYC_income_by_zip_{year}.csv",
-                                f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv", year)
-        add_data_to_income(f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv",
-                           f"processed_datasets/NYC_Income_by_ZIP_{year}_Expanded.csv", year)
-        # stuff
+        x_test, y_predicted, mse, r2_val = \
+        predict(f"processed_datasets/NYC_Income_by_ZIP_{year}_expanded.csv",
+                f"visualizations/NYCHousehold_vs_Income_with_regression_{year}.png",
+                f"visualizations/Regression_error_graph_{year}.png", False, year)
+
+        # add new row to end of predictions df with data on the model for each year
+        #predictions_df.loc\
+            #[len(predictions_df.index)] =\
+                #[year, x_test, y_predicted, mse, r2_val]
+
+        # add line to graph
+        plt.plot(x_test, y_predicted, color=line_colors_dict[year])
+        # couldn't figure out a way to manipulate predictions_df to fit into sns
+        # to neatly produce a bunch of lines based on x-vals, y-vals, and year
+        # so instead here's a less elegant solution of adding each line individually
+
+    #plt.savefig("predictions_test.png")
+    plt.savefig("NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png")
+    plt.show()
 
     # these lines are called when required
-    #draw_graphs("NYC_Income_by_ZIP_expanded.csv", )
-    #predict("NYC_Income_by_ZIP_expanded.csv",
-    #        "NYC_Housing_Household_vs_Income_with_regression.png",
-    #        "Regression_error_graph.png")
+    #draw_graphs("NYC_Income_by_ZIP_expanded.csv", "nyc_zips_choropleth_2.html", 2021)
+    #x_test, y_predicted = predict("NYC_Income_by_ZIP_expanded.csv",
+    #                               "NYC_Housing_Household_vs_Income_with_regression.png",
+    #                               "Regression_error_graph.png", true)
 
     # after doing the cleaning and imputing for 2021, do the same for the other years
 
