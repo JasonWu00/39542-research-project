@@ -1,5 +1,5 @@
 # 39542-research-project
-Author: [JasonWu00](github.com/JasonWu00)
+Author: [JasonWu00](https://github.com/JasonWu00)
 
 Optional research project for the CSCI 39542 "Introduction to Data Science" course.
 
