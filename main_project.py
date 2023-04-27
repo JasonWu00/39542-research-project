@@ -822,6 +822,7 @@ def main():
     # for each model so that they can be all graphed at once
 
     # dictionary of years and corresponding line colors.
+    # 2020 is in blue to highlight the fact that its model is wacky and should be investigated
     line_colors_dict = {2021: "#ff0000",
                         2020: "#0000dd",
                         2019: "#bb0000",
