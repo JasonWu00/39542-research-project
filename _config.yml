@@ -1,5 +1,7 @@
 # test\
-theme: slate
-#remote_theme: pages-themes/slate@v0.2.0
-#plugins:
-#- jekyll-remote-theme # add this line to the plugins list if you already have one
+#theme: slate
+remote_theme: pages-themes/slate@v0.2.0
+plugins:
+- jekyll-remote-theme # add this line to the plugins list if you already have one
+title: "Affordable Housing in NYC: Distribution and Availability Over Time"
+description: "A github.io page providing an overview of the findings and results of a data science research project."

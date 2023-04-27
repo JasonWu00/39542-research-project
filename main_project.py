@@ -4,7 +4,7 @@ Email: zehong.wu@macaulay.cuny.edu
 Resources:
 Pandas documentation for all manner of debugging help
 Title: Affordable Housing in NYC: Distribution and Availability Over Time
-URL: -
+URL: https://jasonwu00.github.io/39542-research-project/
 
 Copyright (C) 2023 Jason Wu
 
