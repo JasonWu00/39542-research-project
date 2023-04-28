@@ -1,6 +1,6 @@
 # 39542-research-project
-[GitHub repo] (https://github.com/JasonWu00/39542-research-project/)
-[github.io page] (https://jasonwu00.github.io/39542-research-project/)
+[GitHub repo](https://github.com/JasonWu00/39542-research-project/)
+[github.io page](https://jasonwu00.github.io/39542-research-project/)
 
 Optional research project for the CSCI 39542 "Introduction to Data Science" course.
 
