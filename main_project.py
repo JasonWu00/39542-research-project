@@ -3,10 +3,24 @@ Name: Ze Hong Wu
 Email: zehong.wu@macaulay.cuny.edu
 Resources:
 Pandas documentation for all manner of debugging help
+See COPYRIGHT.txt for sources for all of my data files.
 Title: Affordable Housing in NYC: Distribution and Availability Over Time
 URL: https://jasonwu00.github.io/39542-research-project/
 
-Copyright (C) 2023 Jason Wu
+IMPORTANT INFO
+
+The reasona all of the Python code is in one file is due to project requirements
+issued by the instructors (something involving the limitations of the submission portal).
+
+I opted to save data produced by some of the project steps into .csv files
+so that I can pick up from existing work as I test my work. 
+This means that some of the project steps can be run on separate calls of the file
+so long as the required .csv files are present.
+
+Copyright names will be updated once the course is over
+and I am not constrained by official roster name issues.
+
+Copyright (C) 2023 Ze Hong Wu
 
 This program is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software Foundation,
@@ -15,13 +29,10 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.
-If not, see <https://www.gnu.org/licenses/>. 
+If not, see <https://www.gnu.org/licenses/>.
 """
 
 import pandas as pd
-# on my device's vscode tab 'pandas' is grayed out
-# and all of its associated functions do not display docstrings.
-# this is probably just a local python issue.
 import matplotlib.pyplot as plt
 import seaborn as sns
 import folium
@@ -34,7 +45,7 @@ from sklearn.preprocessing import PolynomialFeatures
 def import_housing(csv_name: str, columns_to_use: dict)->pd.DataFrame:
     """
     This function takes two inputs:
-    csv_name: the name of a .csv file to read.
+    csv_name: the name of an Affordable Housing in NYC .csv file to read.
     columns_to_use: a list of columns to keep.
 
     The data in the .csv file is read into a DataFrame.
@@ -67,7 +78,8 @@ def choose_postcode(postcode, boro):
     postcode: a potentially NaN zip code.
     boro: a non-NaN string containing a borough.
 
-    Returns postcode if it is not empty, or the ZIP corresponding to boro otherwise.\n
+    Returns postcode if it is not empty, or the ZIP corresponding to boro otherwise.
+
     Based on impute_zip() in Assignment 4.
     """
     #print("Choosing postcode or boro")
@@ -126,8 +138,8 @@ def clean_store_ahs_data(import_name: str, savefile_name: str):
     Step 1: clean up the Affordable Housing data and save it to a csv file.
 
     This function takes two inputs:
-    import_name: name of a csv file to import data from.
-    savefile_name: name of a csv file to save cleaned data to.
+    import_name: name of a Affordable Housing .csv file to import data from.
+    savefile_name: name of a .csv file to save cleaned data to.
     """
     print("Beginning step 1: importing Affordable Housing data")
     desired_columns = [ "Project ID", "Project Start Date", "Project Completion Date",\
@@ -151,9 +163,9 @@ def clean_store_ahs_data(import_name: str, savefile_name: str):
 def strip_letters(index: str)->str:
     """
     This function takes one input:
-    index: a DataFrame index containing a zip code.
+    index: a string containing a zip code.
 
-    Returns the zip code stored in the index.
+    Returns the zip code without the extra letters.
 
     Example:
     input: 'ZCTA5 10101 Estimate'
@@ -291,7 +303,7 @@ def import_income(csv_name: str, year: int)->pd.DataFrame:
     csv_name: the name of an Income by ZIP .csv file to read.
     year: the year the file's data corresponds to.
 
-    The data in the .csv file is read into a DataFrame and then transposed.\n
+    The data in the .csv file is read into a DataFrame and then transposed.
     The DataFrame is then passed to impute_income().
 
     Returns an imputed version of the modified DataFrame.
@@ -311,8 +323,8 @@ def clean_store_income_data(import_name: str, savefile_name: str, year: int):
     Step 2: clean up the 2021 Income by ZIP data and save it to a csv file.
 
     This function takes in three inputs:
-    import_name: the name of an Income by ZIP data file to read from.
-    savefile_name: the name of a csv file to save cleaned income data to.
+    import_name: the name of an Income by ZIP .csv file to read from.
+    savefile_name: the name of a .csv file to save cleaned income data to.
     year: the year the Income by ZIP data corresponds to.
     """
     print("Beginning Step 2: cleaning Income by ZIP data")
@@ -466,11 +478,6 @@ def add_data_to_income(import_name: str, savefile_name: str, year: int):
     df_zip_income["Housing to Households Ratio"] = \
         df_zip_income["Housing to Households Ratio"].apply(lambda ratio: round(ratio, 3))
 
-    # "Can only compare identically labeled Series objects" error appears if you run this:
-    # df_zip_income["Total Affordable Housing"] = \
-    #     df_housing[df_housing["Postcode"] == df_zip_income["Zipcode"]]\
-    #         ["All Counted Units"].sum()
-
     new_column_names = {"Extremely Low Income Units":"Extremely Low Income Households",
                         "Very Low Income Units":"Very Low Income Households",
                         "Low Income Units":"Low Income Households",
@@ -531,7 +538,7 @@ def add_data_to_income(import_name: str, savefile_name: str, year: int):
 
 def draw_graphs(income_csv: str, choropleth_name: str, year: int):
     """
-    Step 4: draw stuff.
+    Step 4: draw graphs relevant to the project.
 
     This function takes in 3 inputs:
     income_csv: name of a Income by ZIP csv to read.
@@ -541,20 +548,12 @@ def draw_graphs(income_csv: str, choropleth_name: str, year: int):
     print("Beginning Step 4: drawing graphs")
     df_zip_income = pd.read_csv(income_csv)
 
-    def reduce_total_housing_outlier(housing: int)->int:
-        """
-        A single-use function to fix an issue with the NYC column having a value of 200k
-        for Total Affordable Housing and thus ruining the Seaborn scatterplot dot size scaling
-        """
-        if housing > 50000:
-            return housing/10
-        return housing
-
     # scatter plot: area median income vs. Housing to Households Ratio
-
+    # These lines fix an issue where the NYC column has a Total Affordable Housing value of
+    # 200k and ruins the Seaborn scatterplot dot size scaling system.
     df_zip_income_mod = df_zip_income
     df_zip_income_mod["Total Affordable Housing"] = \
-        df_zip_income_mod["Total Affordable Housing"].apply(reduce_total_housing_outlier)
+        df_zip_income_mod["Total Affordable Housing"].apply(lambda housing: min(housing, 50000))
 
     sns.scatterplot(
         data=df_zip_income_mod,
@@ -686,7 +685,11 @@ def draw_regression(df: pd.DataFrame,
     plt.show()
     return 0
 
-def predict(income_csv: str, scatterplot_name: str, regression_name: str, graphing: bool, year: int):
+def predict(income_csv: str,
+            scatterplot_name: str,
+            regression_name: str,
+            graphing: bool,
+            year: int):
     """
     Step 5: predict values.
 
@@ -696,6 +699,9 @@ def predict(income_csv: str, scatterplot_name: str, regression_name: str, graphi
     regression_name: name of a regression plot to be generated.
     graphing: tells the function if it should draw graphs.
     year: year corresponding to the income by ZIP data file.
+
+    This function tries to create a linear regression model to predict
+    a zipcode's H/H ratio based on its average median income.
 
     Work for this function is lifted from several functions from Assignment 7.
     """
@@ -717,6 +723,7 @@ def predict(income_csv: str, scatterplot_name: str, regression_name: str, graphi
     print(best_error)
 
     # taken from fit_model() of assignment 7
+
     poly = PolynomialFeatures(degree=best_degree)
     poly_features = poly.fit_transform(x_train.to_frame())
     my_reg = linear_model.LassoCV(cv=5).fit(poly_features, y_train)
@@ -822,7 +829,7 @@ def main():
     # for each model so that they can be all graphed at once
 
     # dictionary of years and corresponding line colors.
-    # 2020 is in blue to highlight the fact that its model is wacky and should be investigated
+    # 2020 is in blue to highlight the fact that its model is weird and should be investigated
     line_colors_dict = {2021: "#ff0000",
                         2020: "#0000dd",
                         2019: "#bb0000",
@@ -845,7 +852,7 @@ def main():
     for year in range(2011, 2022):
         x_test, y_predicted, mse, r2_val = \
         predict(f"processed_datasets/NYC_Income_by_ZIP_{year}_expanded.csv",
-                f"visualizations/NYCHousehold_vs_Income_with_regression_{year}.png",
+                f"visualizations/NYC_Household_vs_Income_with_regression_{year}.png",
                 f"visualizations/Regression_error_graph_{year}.png", False, year)
 
         # add new row to end of predictions df with data on the model for each year
