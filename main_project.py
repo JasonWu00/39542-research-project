@@ -563,7 +563,7 @@ def draw_graphs(income_csv: str, choropleth_name: str, year: int):
         size="Total Affordable Housing",
         sizes=(20,200)
     ).set(title="Housing to Household Ratios per ZIP")
-    plt.savefig(f"NYC_Housing_to_Household_by_ZIP_{year}.png")
+    plt.savefig(f"visualizations/NYC_Housing_to_Household_by_ZIP_{year}.png")
     plt.show()
 
     zips = None
@@ -604,7 +604,7 @@ def draw_graphs(income_csv: str, choropleth_name: str, year: int):
 
     # a choropleth on average income
     draw_choropleth("Median income (dollars)",
-                    f"nyc_zips_income_{year}_choropleth.html",
+                    f"visualizations/nyc_zips_income_{year}_choropleth.html",
                     df_zip_income)
 
 def find_best_degree(x_train, y_train):
@@ -867,14 +867,15 @@ def main():
         # so instead here's a less elegant solution of adding each line individually
 
     #plt.savefig("predictions_test.png")
-    plt.savefig("NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png")
+    plt.savefig("visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png")
     plt.show()
 
     # these lines are called when required
-    #draw_graphs("NYC_Income_by_ZIP_expanded.csv", "nyc_zips_choropleth_2.html", 2021)
+    #draw_graphs("visualizations/NYC_Income_by_ZIP_expanded.csv",
+    #           "visualizations/nyc_zips_choropleth_2.html", 2021)
     #x_test, y_predicted = predict("NYC_Income_by_ZIP_expanded.csv",
-    #                               "NYC_Housing_Household_vs_Income_with_regression.png",
-    #                               "Regression_error_graph.png", true)
+    #                      "visualizations/NYC_Housing_Household_vs_Income_with_regression.png",
+    #                               "visualizations/Regression_error_graph.png", true)
 
     # after doing the cleaning and imputing for 2021, do the same for the other years
 
