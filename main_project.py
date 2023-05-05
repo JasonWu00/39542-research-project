@@ -3,7 +3,9 @@ Name: Ze Hong Wu
 Email: zehong.wu@macaulay.cuny.edu
 Resources:
 Pandas documentation for all manner of debugging help
-See COPYRIGHT.txt for sources for all of my data files.
+Other resources cited in COPYRIGHT.txt
+Link to GitHub repo containing this file and COPYRIGHT.txt:
+https://github.com/JasonWu00/39542-research-project
 Title: Affordable Housing in NYC: Distribution and Availability Over Time
 URL: https://jasonwu00.github.io/39542-research-project/
 
@@ -13,8 +15,9 @@ The reasona all of the Python code is in one file is due to project requirements
 issued by the instructors (something involving the limitations of the submission portal).
 
 I opted to save data produced by some of the project steps into .csv files
-so that I can pick up from existing work as I test my work. 
-This means that some of the project steps can be run on separate calls of the file
+so that I can pick up from existing work as I test my work
+and so that I can inspect them more closely if I want.
+This means that some of the project steps can be run on separate calls of this file
 so long as the required .csv files are present.
 
 Copyright names will be updated once the course is over
@@ -140,6 +143,9 @@ def clean_store_ahs_data(import_name: str, savefile_name: str):
     This function takes two inputs:
     import_name: name of a Affordable Housing .csv file to import data from.
     savefile_name: name of a .csv file to save cleaned data to.
+
+    This function imports the given Affordable Housing data set, processes its contents,
+    and saves it to another filename. Most of the actual work occurs in import_housing.
     """
     print("Beginning step 1: importing Affordable Housing data")
     desired_columns = [ "Project ID", "Project Start Date", "Project Completion Date",\
@@ -619,7 +625,7 @@ def find_best_degree(x_train, y_train):
     """
     # stores paired values of best degree found so far and its corresponding error value
     degree_error_combo = [-1, 2**32]
-    # if the current regression degree is better than the prev one by less than this amount
+    # if the current regression degree is better than the prev one by less than this %
     # then it is considered "good enough".
     min_error_threshold = 0.05
     for degree in range(1,12):
@@ -659,6 +665,10 @@ def draw_regression(df: pd.DataFrame,
     y_pred: list of y-values for the regression line.
     scatter_name: name of the scatterplot to be saved.
     regression_name: name of the regression graph to be saved.
+
+    Using the inputs, this function draws a scatterplot with model prediction line
+    and a regression scatterplot showing the error of the model relative to all data.
+    The function then stores the two scatterplots using the given input names.
     """
     sns.scatterplot(
         data=df,
@@ -683,7 +693,6 @@ def draw_regression(df: pd.DataFrame,
     plt.axhline(y=0, color="black")
     plt.savefig(regression_name)
     plt.show()
-    return 0
 
 def predict(income_csv: str,
             scatterplot_name: str,
@@ -798,18 +807,18 @@ def main():
     print("Beginning project steps")
 
     # this only needs to be called once, since housing data for all years are all in one csv.
-    #clean_store_ahs_data("Affordable_Housing_Production_by_Building.csv",
-    #                     "AHP_by_Building_cleaned.csv")
+    clean_store_ahs_data("Affordable_Housing_Production_by_Building.csv",
+                         "AHP_by_Building_cleaned.csv")
 
     # the 2 calls below will be repeated for every year-based zipcode income prediction.
     # Important: do not include margin of error in the raw csv files
 
-    # for year in range(2011, 2022):
-    #     print(f"Cleaning and modifying data for year {year}")
-    #     clean_store_income_data(f"raw_datasets/NYC_income_by_zip_{year}.csv",
-    #                             f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv", year)
-    #     add_data_to_income(f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv",
-    #                        f"processed_datasets/NYC_Income_by_ZIP_{year}_Expanded.csv", year)
+    for year in range(2011, 2022):
+        print(f"Cleaning and modifying data for year {year}")
+        clean_store_income_data(f"raw_datasets/NYC_income_by_zip_{year}.csv",
+                                f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv", year)
+        add_data_to_income(f"processed_datasets/NYC_Income_by_ZIP_{year}_Cleaned.csv",
+                           f"processed_datasets/NYC_Income_by_ZIP_{year}_Expanded.csv", year)
 
     # initializing a dict to turn into a df to store predictive model outputs for each year
     predictions_dict = {"Year": [0],
@@ -821,9 +830,9 @@ def main():
     #print(predictions_df)
 
     # preliminary prediction on the 2021 data set and drawing a regression graph
-    #predict("processed_datasets/NYC_Income_by_ZIP_2021_Expanded.csv",
-    #        "visualizations/NYC_Household_vs_Income_with_regression_2021.png",
-    #        "visualizations/Regression_error_graph_2021.png", True)
+    predict("processed_datasets/NYC_Income_by_ZIP_2021_Expanded.csv",
+           "visualizations/NYC_Household_vs_Income_with_regression_2021.png",
+           "visualizations/Regression_error_graph_2021.png", 2021, True)
 
     # making models for 2011 to 2021 data sets and retrieving the x and y values
     # for each model so that they can be all graphed at once
@@ -856,26 +865,32 @@ def main():
                 f"visualizations/Regression_error_graph_{year}.png", False, year)
 
         # add new row to end of predictions df with data on the model for each year
+        # This code left commented out because I couldn't figure out if I wanted
+        # to store a bunch of x-test and y-predicted lists, stick it in a .csv,
+        # then try to read it back and not break the formatting.
         #predictions_df.loc\
             #[len(predictions_df.index)] =\
                 #[year, x_test, y_predicted, mse, r2_val]
 
-        # add line to graph
+        # add regression line to graph
         plt.plot(x_test, y_predicted, color=line_colors_dict[year])
         # couldn't figure out a way to manipulate predictions_df to fit into sns
         # to neatly produce a bunch of lines based on x-vals, y-vals, and year
         # so instead here's a less elegant solution of adding each line individually
 
-    #plt.savefig("predictions_test.png")
     plt.savefig("visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png")
     plt.show()
 
-    # these lines are called when required
-    #draw_graphs("visualizations/NYC_Income_by_ZIP_expanded.csv",
-    #           "visualizations/nyc_zips_choropleth_2.html", 2021)
-    #x_test, y_predicted = predict("NYC_Income_by_ZIP_expanded.csv",
-    #                      "visualizations/NYC_Housing_Household_vs_Income_with_regression.png",
-    #                               "visualizations/Regression_error_graph.png", true)
+    # These lines are meant to investigate the 2020 values a little closer
+    # becase the regression line for 2021 breaks the trend formed by the other reg lines.
+    # See the "2011-2021 predictions" graph and line 837/838 comments for more context.
+    # Previously they were for 2021 and produced the scatterplot with regression and
+    # regression error graphs for that year.
+    draw_graphs("visualizations/NYC_Income_by_ZIP_expanded.csv",
+               "visualizations/nyc_zips_choropleth_2.html", 2020)
+    predict("NYC_Income_by_ZIP_expanded.csv",
+            "visualizations/NYC_Housing_Household_vs_Income_with_regression.png",
+            "visualizations/Regression_error_graph.png", 2020, True)
 
     # after doing the cleaning and imputing for 2021, do the same for the other years
 

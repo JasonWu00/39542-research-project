@@ -13,19 +13,24 @@ License: n/a
 Comment: Released by the U.S. Census on https://data.census.gov without copyright protection.
 
 Files: Affordable_Housing_Production_by_Building.csv
-Copyright: 
+Copyright: n/a
 License: n/a
-Comment: Released by New York City on NYC Open Data.
+Comment: Released by the New York City government on NYC Open Data.
 
 Files: nyc_zipcodes_and_boros.csv
 Copyright: Copyright (c) 2018 Erik
 License: MIT
+Comment: source for this file is https://github.com/erikgregorywebb/nyc-housing/blob/master/Data/nyc-zip-codes.csv
 
-Files: 
-    *.html
-    *.png
+Files: visualizations/*.png
+Copyright: Copyright (c) 2023 Jason Wu
+License: CC-BY-SA-4.0
+Comment: Generated using Seaborn.
+
+Files: visualizations/*.html
 Copyright: Copyright (c) 2023 Jason Wu
 License: GPL-3
+Comment: Generated using Folium.
 
 License: MIT
     Permission is hereby granted, free of charge, to any person obtaining a copy
