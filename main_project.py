@@ -332,6 +332,8 @@ def clean_store_income_data(import_name: str, savefile_name: str, year: int):
     import_name: the name of an Income by ZIP .csv file to read from.
     savefile_name: the name of a .csv file to save cleaned income data to.
     year: the year the Income by ZIP data corresponds to.
+
+    This function is sort of a wrapper function for import_income().
     """
     print("Beginning Step 2: cleaning Income by ZIP data")
     df_zip_income = import_income(import_name, year)
@@ -648,6 +650,7 @@ def find_best_degree(x_train, y_train):
         else:
             break
     # for loop ends here
+    print()
     return degree_error_combo[0], degree_error_combo[1]
 
 def draw_regression(df: pd.DataFrame,
@@ -694,6 +697,17 @@ def draw_regression(df: pd.DataFrame,
     plt.savefig(regression_name)
     plt.show()
 
+def cleanup_floats(value: float)->float:
+    """
+    This function takes in one input:
+    value: a floating number, expected to be some sort of regression coefficient.
+    Returns itself if it is a non-zero float or 0.0.
+    If it is -0.0, return 0.0.
+    """
+    if value == -0.0:
+        return 0
+    return value
+
 def predict(income_csv: str,
             scatterplot_name: str,
             regression_name: str,
@@ -716,6 +730,7 @@ def predict(income_csv: str,
     """
     print("Beginning Step 5: attempting to do predictive modeling")
     print(f"Data set to be processed: {income_csv}")
+    print()
     df_zip_income = pd.read_csv(income_csv)
 
     x_train,x_test,y_train,y_test =\
@@ -735,15 +750,15 @@ def predict(income_csv: str,
 
     poly = PolynomialFeatures(degree=best_degree)
     poly_features = poly.fit_transform(x_train.to_frame())
-    my_reg = linear_model.LassoCV(cv=5).fit(poly_features, y_train)
+    my_reg = linear_model.LassoCV(random_state=year).fit(poly_features, y_train)
 
     x_test_poly = poly.fit_transform(x_test.to_frame())
     y_predicted = my_reg.predict(x_test_poly)
 
-
-    # print("my_reg coefficients and intercept:")
-    # print(my_reg.coef_)
-    # print(my_reg.intercept_)
+    print()
+    print("my_reg coefficients and intercept:")
+    print(my_reg.coef_)
+    print(my_reg.intercept_)
 
     # print("diagnostics: get params")
     # print(my_reg.get_params())
@@ -755,6 +770,7 @@ def predict(income_csv: str,
     print("MSE and r2 scores for this regression:")
     print(mean_squared_error(y_test, y_predicted))
     print(r2_score(y_test, y_predicted))
+    print()
 
     # "deals with" outliers by artificially reducing them to 50000
     # the scatter plot generated using the data sizes each dot based on total affordable housing
@@ -791,18 +807,25 @@ def predict(income_csv: str,
     print("Predictive modeling step complete")
     print()
 
+    # returns useful information on the regression prediction to be stored in a csv somewhere
+    output_summary_list = [year, best_degree,
+                           mean_squared_error(y_test, y_predicted),
+                           r2_score(y_test, y_predicted),
+                           my_reg.intercept_]
+    for element in my_reg.coef_:
+        output_summary_list.append(element)
+    # most regressions have a degree of 2 but some have 3
+    # this resolves the issue of fitting degree 2 coefs for a df that accepts degree 3 coefs
+    if len(output_summary_list) < 9:
+        output_summary_list.append(0.0)
+
     return my_x_test,\
             my_y_predicted,\
-            mean_squared_error(y_test, y_predicted),\
-            r2_score(y_test, y_predicted)
-
+            output_summary_list
 
 def main():
     """
     Main function.
-    Each function call below correlates to a "step" of this project.
-
-    Plans for next steps:
     """
     print("Beginning project steps")
 
@@ -822,17 +845,22 @@ def main():
 
     # initializing a dict to turn into a df to store predictive model outputs for each year
     predictions_dict = {"Year": [0],
-                        "xvals": [[1,2,3,4,5,6,7,8,9,0]],
-                        "yvals": [[1,2,3,4,5,6,7,8,9,0]],
+                        "Degree": [0],
                         "MSE": [0.0],
-                        "R2": [0.0]}
+                        "R2": [0.0],
+                        "Intercept": [0],
+                        "var0": [0],
+                        "var1": [0],
+                        "var2": [0],
+                        "var3": [0]}
+    # var3 exists to deal with the fact that 2020 predictions has a degree 1 higher than the rest
     predictions_df = pd.DataFrame.from_dict(predictions_dict)
     #print(predictions_df)
 
     # preliminary prediction on the 2021 data set and drawing a regression graph
     predict("processed_datasets/NYC_Income_by_ZIP_2021_Expanded.csv",
            "visualizations/NYC_Household_vs_Income_with_regression_2021.png",
-           "visualizations/Regression_error_graph_2021.png", 2021, True)
+           "visualizations/Regression_error_graph_2021.png", graphing=True, year=2021)
 
     # making models for 2011 to 2021 data sets and retrieving the x and y values
     # for each model so that they can be all graphed at once
@@ -859,18 +887,13 @@ def main():
     plt.ylabel("Area Median Income")
 
     for year in range(2011, 2022):
-        x_test, y_predicted, mse, r2_val = \
+        x_test, y_predicted, new_row = \
         predict(f"processed_datasets/NYC_Income_by_ZIP_{year}_expanded.csv",
                 f"visualizations/NYC_Household_vs_Income_with_regression_{year}.png",
                 f"visualizations/Regression_error_graph_{year}.png", False, year)
 
         # add new row to end of predictions df with data on the model for each year
-        # This code left commented out because I couldn't figure out if I wanted
-        # to store a bunch of x-test and y-predicted lists, stick it in a .csv,
-        # then try to read it back and not break the formatting.
-        #predictions_df.loc\
-            #[len(predictions_df.index)] =\
-                #[year, x_test, y_predicted, mse, r2_val]
+        predictions_df.loc[len(predictions_df.index)] = new_row
 
         # add regression line to graph
         plt.plot(x_test, y_predicted, color=line_colors_dict[year])
@@ -881,18 +904,27 @@ def main():
     plt.savefig("visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png")
     plt.show()
 
+    predictions_df = predictions_df.astype({"Year": "int32", "Degree": "int32"})
+
+    for var_col_name in ["var1", "var2", "var3", "var0"]:
+        predictions_df[var_col_name] = predictions_df[var_col_name].apply(cleanup_floats)
+
+    print("printing full predictions df before it is saved to csv:")
+    print(predictions_df)
+    predictions_df[predictions_df["Year"] != 0]\
+        .to_csv("coefficients_errors_per_year.csv", index=False)
+
     # These lines are meant to investigate the 2020 values a little closer
     # becase the regression line for 2021 breaks the trend formed by the other reg lines.
     # See the "2011-2021 predictions" graph and line 837/838 comments for more context.
     # Previously they were for 2021 and produced the scatterplot with regression and
     # regression error graphs for that year.
-    draw_graphs("visualizations/NYC_Income_by_ZIP_expanded.csv",
-               "visualizations/nyc_zips_choropleth_2.html", 2020)
-    predict("NYC_Income_by_ZIP_expanded.csv",
+    draw_graphs("processed_datasets/NYC_Income_by_ZIP_2020_Expanded.csv",
+               "visualizations/nyc_zips_choropleth_2.html", year=2020)
+    predict("processed_datasets/NYC_Income_by_ZIP_2020_expanded.csv",
             "visualizations/NYC_Housing_Household_vs_Income_with_regression.png",
-            "visualizations/Regression_error_graph.png", 2020, True)
-
-    # after doing the cleaning and imputing for 2021, do the same for the other years
+            "visualizations/Regression_error_graph.png", year=2020, graphing=True)
+    # main function ends here
 
 if __name__ == "__main__":
     main()
