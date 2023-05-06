@@ -41,7 +41,7 @@ Here are some visualizations produced and their implications.
 
 Image 1: a comparison between Average Median Income and Housing to Household Ratio, per ZIP, for 2021:
 
-![](https://github.com/JasonWu00/39542-research-project/blob/main/visualizations/NYC_Household_vs_Income_with_regression_2020.png)
+![alt](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/NYC_Household_vs_Income_with_regression_2020.png)
 
 Important notes:
 1. The dot for "New York" only scales up to 50,000 units of Total Affordable Housing. This is an incorrect value. I chose to scale down the actual value (in the range of 200,000) because otherwise the dots for all the other ZIPs will all have the same size (due to New York City skewing the distribution).
@@ -55,7 +55,7 @@ Here we can see a few trends:
 
 Image 2: a regression graph showing the inaccuracy of the model for 2021.
 
-![](https://github.com/JasonWu00/39542-research-project/blob/main/visualizations/Regression_error_graph_2021.png)
+![alt](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/Regression_error_graph_2021.png)
 
 Important notes:
 1. Predicted / Actual Error is the difference between the H/H Ratio predicted by the model and the actual H/H Ratio for a given ZIP code.
@@ -63,12 +63,12 @@ Important notes:
 Here we can see:
 1. Asides for a couple of outliers, most points stick close to the line.
 2. While the points below the line are farther away, there are more points above the line. These two details cancel each other out, leaving the distribution of points sort of balanced on both sides of the line. To see this in more detail, see the below image that shows the regression without outliers.
-![](https://github.com/JasonWu00/39542-research-project/blob/main/visualizations/Regression_error_graph_2021_without_outliers.png)
+![](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/Regression_error_graph_2021_without_outliers.png)
 
 
 Image 3: comparison of various models.
 
-![](https://github.com/JasonWu00/39542-research-project/blob/main/visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png)
+![alt](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png)
 
 Important notes:
 1. Regression lines are colored based on proximity from the present. The brighter red a line is, the closer to 2021 its corresponding regression is tailored for.
