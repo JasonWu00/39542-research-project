@@ -28,7 +28,7 @@ Note that I am not a professional in city planning or otherwise well-versed on t
 
 For this project I took the following steps:
 
-0. Acquire the raw data sets. A full list of sources of the various data sets I used can be found in [COPYRIGHT.txt](https://github.com/JasonWu00/39542-research-project/blob/master/COPYRIGHT.txt). Most of the data sets came from the US Census and NYC Open Data.
+0. Acquire the raw data sets. A full list of sources of the various data sets I used can be found in [COPYRIGHT.txt](https://github.com/JasonWu00/39542-research-project/blob/main/COPYRIGHT.txt). Most of the data sets came from the US Census and NYC Open Data.
 1. Clean up the Affordable Housing data by replacing NA values with appropriate placeholders.
 2. Clean up the Income by ZIP data. Since there are multiple data sets for this part (one per year to be analyzed), I called the clean-up function a bunch of times.
 3. Expand Income by ZIP data. I added several columns to each Income by ZIP data file corresponding to data that might aid me in my analysis. Some of these columns came in handy.
@@ -94,4 +94,4 @@ Important notes:
 
 ### Sources
 
-See [COPYRIGHT.txt](https://github.com/JasonWu00/39542-research-project/blob/master/COPYRIGHT.txt).
+See [COPYRIGHT.txt](https://github.com/JasonWu00/39542-research-project/blob/main/COPYRIGHT.txt).
