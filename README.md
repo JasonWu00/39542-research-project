@@ -6,8 +6,6 @@
 
 Optional research project for the CSCI 39542 "Introduction to Data Science" course.
 
-This README is a work in progress and will be updated with more clarifying data once I find the time.
-
 ### Nature of Project
 
 This is an optional research project offered by the instructors of CSCI 39542 "Introduction to Data Science" at Hunter College. The student does most of the work for the project (deciding project scope, collecting data sets, analyzing data sets, etc) independently with a small amount of instructor oversight.
