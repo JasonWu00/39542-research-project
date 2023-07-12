@@ -1,6 +1,6 @@
 """
-Name: Ze Hong Wu
-Email: zehong.wu@macaulay.cuny.edu
+Name: Jason Wu
+Email: -
 Resources:
 Pandas documentation for all manner of debugging help
 Other resources cited in COPYRIGHT.txt
@@ -11,7 +11,7 @@ URL: https://jasonwu00.github.io/39542-research-project/
 
 IMPORTANT INFO
 
-The reasona all of the Python code is in one file is due to project requirements
+The reason all of the Python code is in one file is due to project requirements
 issued by the instructors (something involving the limitations of the submission portal).
 
 I opted to save data produced by some of the project steps into .csv files
@@ -20,10 +20,7 @@ and so that I can inspect them more closely if I want.
 This means that some of the project steps can be run on separate calls of this file
 so long as the required .csv files are present.
 
-Copyright names will be updated once the course is over
-and I am not constrained by official roster name issues.
-
-Copyright (C) 2023 Ze Hong Wu
+Copyright (C) 2023 Jason Wu
 
 This program is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software Foundation,
@@ -573,6 +570,7 @@ def draw_graphs(income_csv: str, choropleth_name: str, year: int):
     ).set(title="Housing to Household Ratios per ZIP")
     plt.savefig(f"visualizations/NYC_Housing_to_Household_by_ZIP_{year}.png")
     plt.show()
+    plt.clf()
 
     zips = None
     with open("nyc-zip-code-tabulation-areas-polygons.geojson",mode="r",encoding="utf_8") as zips:
@@ -673,6 +671,8 @@ def draw_regression(df: pd.DataFrame,
     and a regression scatterplot showing the error of the model relative to all data.
     The function then stores the two scatterplots using the given input names.
     """
+    print("Step 5.5: drawing scatter and regression graphs")
+    print("Graphs are for year", year)
     sns.scatterplot(
         data=df,
         x="Median income (dollars)",
@@ -684,6 +684,7 @@ def draw_regression(df: pd.DataFrame,
     plt.plot(x_test, y_pred, color="black")
     plt.savefig(scatter_name)
     plt.show()
+    plt.clf()
 
     sns.scatterplot(
         data=df,
@@ -696,6 +697,7 @@ def draw_regression(df: pd.DataFrame,
     plt.axhline(y=0, color="black")
     plt.savefig(regression_name)
     plt.show()
+    plt.clf()
 
 def cleanup_floats(value: float)->float:
     """
@@ -883,8 +885,8 @@ def main():
     plt.figure(figsize=(6,6))
     plt.ylim(0.0, 0.1)
     plt.title("Predictive models from 2011 (black) to 2021 (red)")
-    plt.xlabel("Average Housing to Household Ratio")
-    plt.ylabel("Area Median Income")
+    plt.ylabel("Average Housing to Household Ratio")
+    plt.xlabel("Area Median Income")
 
     for year in range(2011, 2022):
         x_test, y_predicted, new_row = \
@@ -909,8 +911,8 @@ def main():
     for var_col_name in ["var1", "var2", "var3", "var0"]:
         predictions_df[var_col_name] = predictions_df[var_col_name].apply(cleanup_floats)
 
-    print("printing full predictions df before it is saved to csv:")
-    print(predictions_df)
+    #print("printing full predictions df before it is saved to csv:")
+    #print(predictions_df)
     predictions_df[predictions_df["Year"] != 0]\
         .to_csv("coefficients_errors_per_year.csv", index=False)
 
@@ -920,10 +922,10 @@ def main():
     # Previously they were for 2021 and produced the scatterplot with regression and
     # regression error graphs for that year.
     draw_graphs("processed_datasets/NYC_Income_by_ZIP_2020_Expanded.csv",
-               "visualizations/nyc_zips_choropleth_2.html", year=2020)
+                "visualizations/nyc_zips_choropleth_2020.html", year=2020)
     predict("processed_datasets/NYC_Income_by_ZIP_2020_expanded.csv",
-            "visualizations/NYC_Housing_Household_vs_Income_with_regression.png",
-            "visualizations/Regression_error_graph.png", year=2020, graphing=True)
+            "visualizations/NYC_Household_vs_Income_with_regression_2020.png",
+            "visualizations/Regression_error_graph_2020.png", year=2020, graphing=True)
     # main function ends here
 
 if __name__ == "__main__":
