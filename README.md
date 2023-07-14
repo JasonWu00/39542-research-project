@@ -4,6 +4,8 @@
 
 [github.io page](https://jasonwu00.github.io/39542-research-project/)
 
+Note that links in this README page leads to the github.io page versions of various files and not their github.com versions.
+
 Optional research project for the CSCI 39542 "Introduction to Data Science" course.
 
 ### Nature of Project
