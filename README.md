@@ -92,4 +92,4 @@ Important notes:
 
 ### Sources
 
-See [COPYRIGHT.txt](https://github.com/JasonWu00/39542-research-project/blob/main/COPYRIGHT.txt).
+See [COPYRIGHT.txt](https://jasonwu00.github.io/39542-research-project/COPYRIGHT.txt).
