@@ -65,7 +65,6 @@ Here we can see:
 2. While the points below the line are farther away, there are more points above the line. These two details cancel each other out, leaving the distribution of points sort of balanced on both sides of the line. To see this in more detail, see the below image that shows the regression without outliers.
 ![](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/Regression_error_graph_2021_without_outliers.png)
 
-
 Image 3: comparison of various models.
 
 ![alt](https://raw.githubusercontent.com/JasonWu00/39542-research-project/main/visualizations/NYC_Housing_vs_Income_2011-2021_predictions_overlaid.png)
